@@ -201,6 +201,7 @@ async def test_create_track_file_with_artist_json(mock_id3_tags):
 @respx.mock(assert_all_mocked=True)
 async def test_create_track_file_without_artist_json(respx_mock, mock_id3_tags):
     # Arrange
+    manager = TrackManager()
     reference_track = create_mock_trackdetails()
     reference_track.product = "_"
     reference_track.artist = ["test artist1", "(Character 1)"]
@@ -223,8 +224,8 @@ async def test_create_track_file_without_artist_json(respx_mock, mock_id3_tags):
     # mock franchise api needed by properly create simple artist objects
     respx_mock.route(
         method="GET", 
-        port__in=[TrackManager.MBARTIST_API_PORT], 
-        host=TrackManager.MBARTIST_API_DOMAIN, 
+        port__in=[manager.api_port], 
+        host=manager.api_host, 
         path="/api/franchise"
     ).mock(return_value=httpx.Response(
         200, json=[

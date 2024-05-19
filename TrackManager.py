@@ -456,12 +456,14 @@ class TrackManager:
   SIMPLE_ARTIST_ALIAS_API_ENDPOINT = "api/alias"
   SIMPLE_ARTIST_FRANCHISE_API_ENDPOINT = "api/franchise"
   MBARTIST_API_ENDPOINT = "api/mbartist"
-  MBARTIST_API_PORT = 23409
-  MBARTIST_API_DOMAIN = "localhost"
+  API_PORT = 80
+  API_DOMAIN = "artist-resolver.lan"
 
-  def __init__(self):
+  def __init__(self, host:str=None, port:str=None):
     self.tracks: list[TrackDetails] = []
     self.artist_data: dict[MbArtistDetails] = {}
+    self.api_host = host if host is not None else self.API_DOMAIN
+    self.api_port = port if port is not None else self.API_PORT
 
   async def load_directory(self, directory: str) -> None:
     """
@@ -508,27 +510,25 @@ class TrackManager:
 
     for artist in self.artist_data.values():
       if isinstance(artist, SimpleArtistDetails):
-        await TrackManager.update_simple_artist_from_db(artist)
+        await self.update_simple_artist_from_db(artist)
       else:
-        await TrackManager.update_mbartist_from_db(artist)
+        await self.update_mbartist_from_db(artist)
 
-  @staticmethod
-  async def update_simple_artist_from_db(artist: SimpleArtistDetails) -> None:
+  async def update_simple_artist_from_db(self, artist: SimpleArtistDetails) -> None:
     """
     Loads customized artist and alias data for a simple artist from the database.
     """
 
-    alias = await TrackManager.get_simple_artist_alias(artist.name, artist.product_id)
+    alias = await self.get_simple_artist_alias(artist.name, artist.product_id)
     if alias:
       artist.update_from_simple_artist_dict(alias[0])
 
-  @staticmethod
-  async def update_mbartist_from_db(artist: MbArtistDetails) -> None:
+  async def update_mbartist_from_db(self, artist: MbArtistDetails) -> None:
     """
     Loads customized artist data for an mb artist from the database.
     """
 
-    mb_artist_details = await TrackManager.get_mbartist(artist.mbid)
+    mb_artist_details = await self.get_mbartist(artist.mbid)
     if mb_artist_details:
       artist.update_from_customization(mb_artist_details)
 
@@ -538,7 +538,7 @@ class TrackManager:
     """
 
     if not hasattr(self, 'db_products') or not self.db_products:
-      self.db_products = await TrackManager.list_simple_artist_franchise()
+      self.db_products = await self.list_simple_artist_franchise()
     
     returnObj: list[SimpleArtistDetails] = []
 
@@ -579,22 +579,21 @@ class TrackManager:
         if(artist.include != True):
           continue
 
-        await TrackManager.send_simple_artist_changes_to_db(artist)
-        await TrackManager.send_simple_artist_alias_changes_to_db(artist)
+        await self.send_simple_artist_changes_to_db(artist)
+        await self.send_simple_artist_alias_changes_to_db(artist)
       else:
-        await TrackManager.send_mbartist_changes_to_db(artist)
+        await self.send_mbartist_changes_to_db(artist)
 
-  @staticmethod
-  async def send_mbartist_changes_to_db(artist: MbArtistDetails) -> None:
+  async def send_mbartist_changes_to_db(self, artist: MbArtistDetails) -> None:
     """
     Sends changes for mb artist artist_data list to the db
     """
 
-    existing_artist = await TrackManager.get_mbartist(artist.mbid)
+    existing_artist = await self.get_mbartist(artist.mbid)
     
     if (None == existing_artist):
       # DB doesn't have artist with the current MBID, create new DB artist
-      await TrackManager.post_mbartist(artist)
+      await self.post_mbartist(artist)
       return
     
     artist.id = existing_artist["id"]
@@ -603,17 +602,16 @@ class TrackManager:
         existing_artist["name"] != artist.custom_name or
         existing_artist["originalName"] != artist.custom_original_name):
       # artist with the current MBID was found in DB, but details were changed, update DB artist
-      await TrackManager.update_mbartist(existing_artist["id"], artist)
+      await self.update_mbartist(existing_artist["id"], artist)
 
     # Reaching this point means the DB artist is equal to the local artist, no actions need to be done
 
-  @staticmethod
-  async def send_simple_artist_changes_to_db(artist: SimpleArtistDetails) -> None:
+  async def send_simple_artist_changes_to_db(self, artist: SimpleArtistDetails) -> None:
     """
     Sends changes for simple artists to the db if it was changed
     """
 
-    existing_artist = await TrackManager.get_simple_artist(None, artist.custom_name)
+    existing_artist = await self.get_simple_artist(None, artist.custom_name)
     if existing_artist:
       # if the artist is found in the DB by name, always update local artist ID to match the DB
       artist.id = existing_artist[0]["id"]
@@ -621,12 +619,12 @@ class TrackManager:
     
     if not artist.id:
       # DB artist was not found by name and local data doesn't have ID, create new DB artist
-      posted_artist = await TrackManager.post_simple_artist(artist)
+      posted_artist = await self.post_simple_artist(artist)
       artist.id = posted_artist["id"]
       return
     
     # retrieve artist by ID to check for changed properties
-    existing_artist_by_id = await TrackManager.get_simple_artist(artist.id, None)
+    existing_artist_by_id = await self.get_simple_artist(artist.id, None)
 
     if existing_artist_by_id:
       existing_artist_by_id = existing_artist_by_id[0]
@@ -636,7 +634,7 @@ class TrackManager:
         return
     
       # local artist name has changed, update DB artist
-      updated_artist = await TrackManager.update_simple_artist(existing_artist_by_id["id"], artist)
+      updated_artist = await self.update_simple_artist(existing_artist_by_id["id"], artist)
       artist.id = updated_artist["id"]
       return
     
@@ -646,36 +644,36 @@ class TrackManager:
     # inconsistent or that there is a bug somewhere in the application
     raise ValueError(f"Artist with ID {artist.id} not found in database.")
 
-  @staticmethod
-  async def send_simple_artist_alias_changes_to_db(artist: SimpleArtistDetails) -> None:
+  async def send_simple_artist_alias_changes_to_db(self, artist: SimpleArtistDetails) -> None:
     """
     Sends changes for simple artist aliases to the db if it was changed
     """
 
-    existing_alias = await TrackManager.get_simple_artist_alias(artist.name, artist.product_id)
+    existing_alias = await self.get_simple_artist_alias(artist.name, artist.product_id)
     
     if not existing_alias:
       # Alias doesn't exist, created
-      await TrackManager.post_simple_artist_alias(artist.id, artist.name, artist.product_id)
+      await self.post_simple_artist_alias(artist.id, artist.name, artist.product_id)
       return
 
     if existing_alias:
       existing_alias = existing_alias[0]
       if existing_alias['artistId'] != artist.id:
         # Alias exists but points to the wrong artist, recreate it
-        await TrackManager.delete_simple_artist_alias(existing_alias['id'])
-        await TrackManager.post_simple_artist_alias(artist.id, artist.name, artist.product_id)
+        await self.delete_simple_artist_alias(existing_alias['id'])
+        await self.post_simple_artist_alias(artist.id, artist.name, artist.product_id)
 
       # if no other conditions apply the alias already exists and is up to date, no action needs to be taken
 
-  @staticmethod
-  async def get_mbartist(mbid:str) -> dict:
+  async def get_mbartist(self, mbid:str) -> dict:
     """
     Gets mb artist from the database
     """
 
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.MBARTIST_API_ENDPOINT}/mbid/{mbid}"
+
     async with httpx.AsyncClient() as client:
-      response = await client.get(f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.MBARTIST_API_ENDPOINT}/mbid/{mbid}")
+      response = await client.get(f"{endpoint}")
       
       match response.status_code:
         case 200:
@@ -686,13 +684,12 @@ class TrackManager:
         case _:
           raise Exception(f"Failed to fetch artist data for MBID {mbid}: {response.status_code}")
 
-  @staticmethod
-  async def list_simple_artist_franchise() -> dict:
+  async def list_simple_artist_franchise(self) -> dict:
     """
     Gets list of all franchise/product items from the db
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_FRANCHISE_API_ENDPOINT}"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_FRANCHISE_API_ENDPOINT}"
 
     async with httpx.AsyncClient() as client:
       response = await client.get(f"{endpoint}")
@@ -701,13 +698,12 @@ class TrackManager:
       else:
         return None
 
-  @staticmethod
-  async def get_simple_artist_franchise(name: str = None) -> dict:
+  async def get_simple_artist_franchise(self, name: str = None) -> dict:
     """
     Gets franchise/artist from the db
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_FRANCHISE_API_ENDPOINT}"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_FRANCHISE_API_ENDPOINT}"
 
     if not name:
       raise ValueError("No parameters were provided to query.")
@@ -719,13 +715,12 @@ class TrackManager:
       else:
         return None
 
-  @staticmethod
-  async def get_simple_artist(id:int, name:str) -> dict:
+  async def get_simple_artist(self, id:int, name:str) -> dict:
     """
     Gets details for a simple artist from the database
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_API_ENDPOINT}"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_API_ENDPOINT}"
     params = {}
 
     if id:
@@ -748,13 +743,12 @@ class TrackManager:
 
         return None
   
-  @staticmethod
-  async def get_simple_artist_alias(name: str = None, franchiseId: int = None) -> dict:
+  async def get_simple_artist_alias(self, name: str = None, franchiseId: int = None) -> dict:
     """
     Gets all aliases of a simple artist from the db
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_ALIAS_API_ENDPOINT}"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_ALIAS_API_ENDPOINT}"
     params = {}
 
     if name:
@@ -777,20 +771,19 @@ class TrackManager:
 
         return None
 
-  @staticmethod
-  async def post_mbartist(artist:MbArtistDetails) -> None:
+  async def post_mbartist(self, artist:MbArtistDetails) -> None:
     """
     Creates a new mb artist in the db from an artist details object
     """
     
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.MBARTIST_API_ENDPOINT}"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.MBARTIST_API_ENDPOINT}"
 
     data = {
       "MbId": artist.mbid,
       "Name": artist.custom_name,
       "OriginalName": artist.custom_original_name,
       "Include": artist.include
-    }
+    },
 
     async with httpx.AsyncClient() as client:
       response = await client.post(endpoint, json=data)
@@ -804,13 +797,12 @@ class TrackManager:
         case _:
           raise Exception(f"Failed to create artist with MBID {artist.mbid}: {response.text} ({response.status_code} {response.reason_phrase})")
   
-  @staticmethod
-  async def post_simple_artist(artist:SimpleArtistDetails) -> dict:
+  async def post_simple_artist(self, artist:SimpleArtistDetails) -> dict:
     """
     Creates a new simple artist in the db from an artist details object
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_API_ENDPOINT}"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_API_ENDPOINT}"
 
     data = {
       "Name": artist.custom_name
@@ -828,13 +820,12 @@ class TrackManager:
         case _:
           raise Exception(f"Failed to post artist data for MBID {artist.mbid}: {response.text} ({response.status_code} {response.reason_phrase})")
   
-  @staticmethod
-  async def post_simple_artist_alias(artist_id: int, name: str, franchise_id: int) -> None:
+  async def post_simple_artist_alias(self, artist_id: int, name: str, franchise_id: int) -> None:
     """
     Creates a new alias for a simple artist in the db
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_ALIAS_API_ENDPOINT}"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_ALIAS_API_ENDPOINT}"
     
     data = {
       "Name": name.replace(" ", ""),
@@ -854,14 +845,13 @@ class TrackManager:
         case _:
           raise Exception(f"Failed to create alias for name {name}: {response.text} ({response.status_code} {response.reason_phrase})")
 
-  @staticmethod
-  async def delete_simple_artist_alias(id: int) -> None:
+  async def delete_simple_artist_alias(self, id: int) -> None:
     """
     Deletes a simple artist alias
     """
 
     async with httpx.AsyncClient() as client:
-      response = await client.delete(f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_ALIAS_API_ENDPOINT}/id/{id}")
+      response = await client.delete(f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_ALIAS_API_ENDPOINT}/id/{id}")
       
       match response.status_code:
         case 200:
@@ -871,13 +861,12 @@ class TrackManager:
         case _:
           raise Exception(f"An error occurred when deleting alias with ID {id}: {response.status_code}")
 
-  @staticmethod
-  async def update_mbartist(id:int, artist:MbArtistDetails) -> None:
+  async def update_mbartist(self, id:int, artist:MbArtistDetails) -> None:
     """
     Updates the db record of a mb artist
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.MBARTIST_API_ENDPOINT}/id"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.MBARTIST_API_ENDPOINT}/id"
 
     data = {
       "MbId": artist.mbid,
@@ -898,13 +887,12 @@ class TrackManager:
         case _:
           raise Exception(f"Failed to update artist data for MBID {artist.mbid}: {response.text} ({response.status_code} {response.reason_phrase})")
 
-  @staticmethod
-  async def update_simple_artist(id:int, artist:SimpleArtistDetails) -> None:
+  async def update_simple_artist(self, id:int, artist:SimpleArtistDetails) -> None:
     """
     Updates the db record of a simple artist
     """
 
-    endpoint = f"http://{TrackManager.MBARTIST_API_DOMAIN}:{TrackManager.MBARTIST_API_PORT}/{TrackManager.SIMPLE_ARTIST_API_ENDPOINT}/id"
+    endpoint = f"http://{self.api_host}:{self.api_port}/{self.SIMPLE_ARTIST_API_ENDPOINT}/id"
 
     data = {
       "Name": artist.custom_name
@@ -935,14 +923,14 @@ async def seedData() -> None:
   # dde = await send_post_request(data, "http://localhost:23409/api/mbartist")
   
   # dde = await send_get_request("http://localhost:23409/api/mbartist/mbid/f3688ad9-cd14-4cee-8fa0-0f4434e762bb")
-  dde = await send_put_request(data, "http://localhost:23409/api/mbartist/id/1")
+  # dde = await send_put_request(data, "http://localhost:23409/api/mbartist/id/1")
 
   data = {
     "Name": "_",
   }
-  await send_post_request(data, "http://localhost:23409/api/franchise")
-  product_default = await send_get_request(f"http://localhost:23409/api/franchise?name={data["Name"]}")
-
+  #await send_post_request(data, "http://localhost:23409/api/franchise")
+  product_default = await send_get_request(f"http://artist-resolver.lan:80/api/franchise?name={data["Name"]}")
+  return
   data = {
     "Name": "TestFranchise1",
   }

@@ -42,8 +42,8 @@ async def test_create_mbartist_objects_without_db_information(respx_mock):
     # Mock the DB call to always return 404
     respx_mock.route(
         method="GET", 
-        port__in=[TrackManager.MBARTIST_API_PORT], 
-        host=TrackManager.MBARTIST_API_DOMAIN, 
+        port__in=[manager.api_port], 
+        host=manager.api_host, 
         path__regex=r"/api/mbartist/mbid/.*"
     ).mock(return_value=httpx.Response(404))
 
@@ -92,8 +92,8 @@ async def test_create_mbartist_objects_with_db_information(respx_mock):
     # Mock the DB call to return 200 for the specified mbid
     respx_mock.route(
         method="GET", 
-        port__in=[TrackManager.MBARTIST_API_PORT], 
-        host=TrackManager.MBARTIST_API_DOMAIN, 
+        port__in=[manager.api_port], 
+        host=manager.api_host, 
         path=f"/api/mbartist/mbid/mock-artist1-id"
     ).mock(return_value=httpx.Response(
         200, json={
@@ -143,16 +143,16 @@ async def test_mbid_not_found_in_db_when_saving(respx_mock):
     # Mock first request to not return anything when checking artist by name
     respx_mock.route(
         method="GET",
-        port=TrackManager.MBARTIST_API_PORT,
-        host=TrackManager.MBARTIST_API_DOMAIN,
+        port=manager.api_port,
+        host=manager.api_host,
         path=f"/api/mbartist/mbid/{artist.mbid}"
     ).mock(return_value=httpx.Response(404))
 
     # Mock call to update artist
     respx_mock.route(
         method="POST",
-        port=TrackManager.MBARTIST_API_PORT,
-        host=TrackManager.MBARTIST_API_DOMAIN,
+        port=manager.api_port,
+        host=manager.api_host,
         path=f"/api/mbartist",
     ).mock(return_value=httpx.Response(200, json={
         'id': server_artist_id,
@@ -163,7 +163,7 @@ async def test_mbid_not_found_in_db_when_saving(respx_mock):
     }))
 
     # Act
-    await TrackManager.send_mbartist_changes_to_db(artist)
+    await manager.send_mbartist_changes_to_db(artist)
 
     # Assert
     assert respx_mock.calls.call_count == 2
@@ -174,7 +174,7 @@ async def test_mbid_not_found_in_db_when_saving(respx_mock):
     # post new artist
     assert respx_mock.calls[1].request.method == "POST", "Call to update artist was not of type UPDATE"
     call_1_content = json.loads(respx_mock.calls[1].request.content.decode())
-    assert call_1_content == {"MbId": artist.mbid, "Name": artist.custom_name, "OriginalName": artist.custom_original_name, "Include": artist.include}, f"Post body to update artist did not match expected object"
+    assert call_1_content[0] == {"MbId": artist.mbid, "Name": artist.custom_name, "OriginalName": artist.custom_original_name, "Include": artist.include}, f"Post body to update artist did not match expected object"
 
 
 @pytest.mark.asyncio
@@ -206,8 +206,8 @@ async def test_mbid_found_on_server_when_saving_data_identical(respx_mock):
     # Mock first request to not return anything when checking artist by name
     respx_mock.route(
         method="GET",
-        port=TrackManager.MBARTIST_API_PORT,
-        host=TrackManager.MBARTIST_API_DOMAIN,
+        port=manager.api_port,
+        host=manager.api_host,
         path=f"/api/mbartist/mbid/{artist.mbid}"
     ).mock(return_value=httpx.Response(200, json={
         'id': server_artist_id,
@@ -218,7 +218,7 @@ async def test_mbid_found_on_server_when_saving_data_identical(respx_mock):
     }))
 
     # Act
-    await TrackManager.send_mbartist_changes_to_db(artist)
+    await manager.send_mbartist_changes_to_db(artist)
 
     # Assert
     assert respx_mock.calls.call_count == 1
@@ -255,8 +255,8 @@ async def test_mbid_found_on_server_when_saving_data_changed(respx_mock):
     # Mock first request to not return anything when checking artist by name
     respx_mock.route(
         method="GET",
-        port=TrackManager.MBARTIST_API_PORT,
-        host=TrackManager.MBARTIST_API_DOMAIN,
+        port=manager.api_port,
+        host=manager.api_host,
         path=f"/api/mbartist/mbid/{artist.mbid}"
     ).mock(return_value=httpx.Response(200, json={
         'id': server_artist_id,
@@ -269,8 +269,8 @@ async def test_mbid_found_on_server_when_saving_data_changed(respx_mock):
     # Mock call to update artist
     respx_mock.route(
         method="PUT",
-        port=TrackManager.MBARTIST_API_PORT,
-        host=TrackManager.MBARTIST_API_DOMAIN,
+        port=manager.api_port,
+        host=manager.api_host,
         path=f"/api/mbartist/id/{server_artist_id}",
     ).mock(return_value=httpx.Response(200, json={
         'id':artist.id,
@@ -281,7 +281,7 @@ async def test_mbid_found_on_server_when_saving_data_changed(respx_mock):
     }))
 
     # Act
-    await TrackManager.send_mbartist_changes_to_db(artist)
+    await manager.send_mbartist_changes_to_db(artist)
 
     # Assert
     assert respx_mock.calls.call_count == 2
