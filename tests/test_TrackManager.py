@@ -8,9 +8,6 @@ from TrackManager import TrackManager, MbArtistDetails, SimpleArtistDetails, Tra
 from mutagen import id3
 from mutagen.id3 import TIT2, TPE1, TALB, TPE2, TIT1, TOAL, TOPE, TPE3
 
-api_port = 23409
-api_host = "localhost"
-
 expected_person3 = {
     "name": "Person3 Lastname",
     "type": "Person",
@@ -226,8 +223,8 @@ async def test_create_track_file_without_artist_json(respx_mock, mock_id3_tags):
     # mock franchise api needed by properly create simple artist objects
     respx_mock.route(
         method="GET", 
-        port__in=[api_port], 
-        host=api_host, 
+        port__in=[TrackManager.MBARTIST_API_PORT], 
+        host=TrackManager.MBARTIST_API_DOMAIN, 
         path="/api/franchise"
     ).mock(return_value=httpx.Response(
         200, json=[

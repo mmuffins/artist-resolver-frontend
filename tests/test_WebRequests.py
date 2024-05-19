@@ -5,9 +5,6 @@ import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from TrackManager import TrackManager, MbArtistDetails, SimpleArtistDetails, TrackManager, TrackDetails
 
-api_port = 23409
-api_host = "localhost"
-
 @pytest.mark.asyncio
 @respx.mock(assert_all_mocked=True)
 async def test_post_simple_artist_success(respx_mock):
@@ -27,8 +24,8 @@ async def test_post_simple_artist_success(respx_mock):
 
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist"
     ).mock(return_value=httpx.Response(200, json={"id": 99, "name": "SimpleArtist", "aliases": []}))
 
@@ -57,8 +54,8 @@ async def test_post_simple_artist_conflict(respx_mock):
 
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist"
     ).mock(return_value=httpx.Response(409))
 
@@ -79,8 +76,8 @@ async def test_post_simple_artist_alias_success(respx_mock):
 
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias"
     ).mock(return_value=httpx.Response(200, json={"id": 88, "name": "SimpleArtistAlias", "artistId": 99, "artist": "SimpleArtist", "franchiseId": 4, "franchise": "TestProduct"}))
 
@@ -100,8 +97,8 @@ async def test_post_simple_artist_alias_conflict(respx_mock):
 
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias"
     ).mock(return_value=httpx.Response(409))
 
@@ -118,8 +115,8 @@ async def test_delete_simple_artist_alias_success(respx_mock):
 
     respx_mock.route(
         method="DELETE",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/alias/id/{alias_id}"
     ).mock(return_value=httpx.Response(200))
 
@@ -137,8 +134,8 @@ async def test_delete_simple_artist_alias_not_found(respx_mock):
 
     respx_mock.route(
         method="DELETE",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/alias/id/{alias_id}"
     ).mock(return_value=httpx.Response(404))
 
@@ -155,8 +152,8 @@ async def test_delete_simple_artist_alias_server_error(respx_mock):
 
     respx_mock.route(
         method="DELETE",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/alias/id/{alias_id}"
     ).mock(return_value=httpx.Response(500))
 
@@ -186,8 +183,8 @@ async def test_update_simple_artist_success(respx_mock):
 
     respx_mock.route(
         method="PUT",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/artist/id/{artist_id}"
     ).mock(return_value=httpx.Response(200, json={
         'id': artist_id,
@@ -221,8 +218,8 @@ async def test_update_simple_artist_not_found(respx_mock):
 
     respx_mock.route(
         method="PUT",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/artist/id/{artist_id}"
     ).mock(return_value=httpx.Response(404))
 
@@ -240,8 +237,8 @@ async def test_get_simple_artist_success(respx_mock):
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
         params={"id": artist_id, "name": name}
     ).mock(return_value=httpx.Response(200, json=[{"id": artist_id, "name": name, "aliases": []}]))
@@ -263,8 +260,8 @@ async def test_get_simple_artist_not_found(respx_mock):
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
         params={"id": artist_id, "name": name}
     ).mock(return_value=httpx.Response(200, json=[]))
@@ -286,8 +283,8 @@ async def test_get_simple_artist_alias_success(respx_mock):
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias",
         params={"name": name, "franchiseId": franchise_id}
     ).mock(return_value=httpx.Response(200, json=[{"id": 88, "name": name, "artistId": 99, "artist": "SimpleArtist", "franchiseId": franchise_id, "franchise": "TestProduct"}]))
@@ -309,8 +306,8 @@ async def test_get_simple_artist_alias_not_found(respx_mock):
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias",
         params={"name": name, "franchiseId": franchise_id}
     ).mock(return_value=httpx.Response(200, json=[]))
@@ -342,8 +339,8 @@ async def test_update_mbartist_success(respx_mock):
 
     respx_mock.route(
         method="PUT",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/mbartist/id/{artist_id}"
     ).mock(return_value=httpx.Response(200, json={
         'id': artist_id,
@@ -375,8 +372,8 @@ async def test_update_mbartist_not_found(respx_mock):
 
     respx_mock.route(
         method="PUT",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/mbartist/id/{artist_id}"
     ).mock(return_value=httpx.Response(404))
 
@@ -393,8 +390,8 @@ async def test_get_mbartist_success(respx_mock):
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/mbartist/mbid/{mbid}"
     ).mock(return_value=httpx.Response(200, json={"mbid": mbid, "name": "MbArtist"}))
 
@@ -414,8 +411,8 @@ async def test_get_mbartist_not_found(respx_mock):
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/mbartist/mbid/{mbid}"
     ).mock(return_value=httpx.Response(404))
 
@@ -443,8 +440,8 @@ async def test_post_mbartist_success(respx_mock):
 
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/mbartist"
     ).mock(return_value=httpx.Response(200, json={"id": 99, "name": "MbArtist", "aliases": []}))
 
@@ -471,8 +468,8 @@ async def test_post_mbartist_conflict(respx_mock):
 
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/mbartist"
     ).mock(return_value=httpx.Response(409))
 

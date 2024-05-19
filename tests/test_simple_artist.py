@@ -6,9 +6,6 @@ import json
 from unittest.mock import AsyncMock, patch, MagicMock
 from TrackManager import TrackManager, MbArtistDetails, SimpleArtistDetails, TrackManager, TrackDetails
 
-api_port = 23409
-api_host = "localhost"
-
 @pytest.mark.asyncio
 @respx.mock(assert_all_mocked=True)
 async def test_create_artist_objects_with_unknown_alias(respx_mock):
@@ -48,8 +45,8 @@ async def test_create_artist_objects_with_unknown_alias(respx_mock):
     # Mock the DB call to return an empty object
     respx_mock.route(
         method="GET", 
-        port__in=[api_port], 
-        host=api_host, 
+        port__in=[TrackManager.MBARTIST_API_PORT], 
+        host=TrackManager.MBARTIST_API_DOMAIN, 
         path__regex=r"/api/alias.*"
     ).mock(return_value=httpx.Response(200, text="[]"))
 
@@ -122,16 +119,16 @@ async def test_create_artist_objects_with_db_information(respx_mock):
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias",
         params={"name": "SimpleArtist1", "franchiseId": "1"}
     ).mock(return_value=httpx.Response(200, json=[artist1_expected]))
 
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias",
         params={"name": "SimpleArtist2", "franchiseId": "1"}
     ).mock(return_value=httpx.Response(200, json=[artist2_expected]))
@@ -251,8 +248,8 @@ async def test_split_artist_string_into_simple_artist_objects(respx_mock):
 
     respx_mock.route(
         method="GET", 
-        port__in=[api_port], 
-        host=api_host, 
+        port__in=[TrackManager.MBARTIST_API_PORT], 
+        host=TrackManager.MBARTIST_API_DOMAIN, 
         path="/api/franchise"
     ).mock(return_value=httpx.Response(
         200, json=[
@@ -316,16 +313,16 @@ async def test_artist_without_id_not_found_when_saving(respx_mock):
     # Mock the GET requests to simulate that no artist exists
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist"
     ).mock(return_value=httpx.Response(200, text="[]"))
 
     # Mock the POST requests to create new artist and alias
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
     ).mock(return_value=httpx.Response(200, json={
         'id': server_artist_id,
@@ -373,8 +370,8 @@ async def test_artist_without_id_found_by_name_when_saving(respx_mock):
     # Mock the GET requests to simulate that an artist when searched for name
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
         params={"name": artist.custom_name},
     ).mock(return_value=httpx.Response(200, json=[{
@@ -424,8 +421,8 @@ async def test_artist_with_id_not_found_when_saving(respx_mock):
     # Mock first request to not return anything when checking artist by name
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
         params={"name": artist.custom_name},
     ).mock(return_value=httpx.Response(200, text="[]"))
@@ -433,8 +430,8 @@ async def test_artist_with_id_not_found_when_saving(respx_mock):
     # Mock second request to return artist when checking artist by ID
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
         params={"id": artist.id,},
     ).mock(return_value=httpx.Response(200, json=[{
@@ -446,8 +443,8 @@ async def test_artist_with_id_not_found_when_saving(respx_mock):
     # Mock update call to return artist
     respx_mock.route(
         method="PUT",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/artist/id/{artist.id}",
     ).mock(return_value=httpx.Response(200, json={
         'id': artist.id,
@@ -499,8 +496,8 @@ async def test_artist_with_id_found_by_id_when_saving(respx_mock):
     # Mock first request to not return anything when checking artist by name
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
         params={"name": artist.custom_name},
     ).mock(return_value=httpx.Response(200, text="[]"))
@@ -508,8 +505,8 @@ async def test_artist_with_id_found_by_id_when_saving(respx_mock):
     # Mock second request to return artist when checking artist by ID
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist",
         params={"id": artist.id,},
     ).mock(return_value=httpx.Response(200, json=[{
@@ -556,8 +553,8 @@ async def test_artist_with_id_found_by_name_when_saving(respx_mock):
     # Mock first get request to return artist by name
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/artist"
     ).mock(return_value=httpx.Response(200, json=[{
         'id': server_artist_id,
@@ -603,8 +600,8 @@ async def test_alias_not_found_when_saving(respx_mock):
     # Mock request to not return anything when checking alias
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias",
         params={"name": artist.name, "franchiseId": artist.product_id},
     ).mock(return_value=httpx.Response(200, text="[]"))
@@ -612,8 +609,8 @@ async def test_alias_not_found_when_saving(respx_mock):
     # Mock the requests create new alias
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias"
     ).mock(return_value=httpx.Response(200, json={
         "id":89,
@@ -666,8 +663,8 @@ async def test_alias_found_when_saving_points_to_correct_artist(respx_mock):
     # Mock request to return alias with correct artist id
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias",
         params={"name": artist.name, "franchiseId": artist.product_id},
     ).mock(return_value=httpx.Response(200, json=[{
@@ -716,8 +713,8 @@ async def test_alias_found_when_saving_points_to_wrong_artist(respx_mock):
     # Mock request to return alias with wrong artist id
     respx_mock.route(
         method="GET",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias",
         params={"name": artist.name, "franchiseId": artist.product_id},
     ).mock(return_value=httpx.Response(200, json=[{
@@ -732,15 +729,15 @@ async def test_alias_found_when_saving_points_to_wrong_artist(respx_mock):
     # Mock the requests to delete and recreate the alias
     respx_mock.route(
         method="DELETE",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path=f"/api/alias/id/{delete_alias_id}"
     ).mock(return_value=httpx.Response(200))
 
     respx_mock.route(
         method="POST",
-        port=api_port,
-        host=api_host,
+        port=TrackManager.MBARTIST_API_PORT,
+        host=TrackManager.MBARTIST_API_DOMAIN,
         path="/api/alias"
     ).mock(return_value=httpx.Response(200, json={
         "id":89,
