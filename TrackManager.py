@@ -7,6 +7,7 @@
 # TODO: colors -> highlight colors that are different from the current id tag / were edited
 # TODO: make gui display error if rest calls fail
 # TODO: Add buttons for common tasks, e.g. copy title to original title
+# TODO: change get_api_health to get_server_health
 
 import hashlib
 import os
@@ -63,6 +64,7 @@ class MbArtistDetails:
     self.custom_name = sort_name
     self.custom_original_name = name
     self.id: int = id
+    self.updated_from_server: bool = False
 
   def __str__(self):
     return	f"{self.name}"
@@ -87,6 +89,7 @@ class MbArtistDetails:
     self.custom_name = data['name']
     self.custom_original_name = data['originalName']
     self.id = data['id']
+    self.updated_from_server = True
 
   @classmethod
   def from_dict(cls, data: dict, artist_list: list['MbArtistDetails']):
@@ -193,6 +196,7 @@ class SimpleArtistDetails(MbArtistDetails):
     self.custom_name = data['artist']
     self.custom_original_name = data['name']
     self.id = data['artistId']
+    self.updated_from_server = True
 
   @staticmethod
   def split_artist_list(artist_list: list[str]) -> list[str]:
@@ -278,7 +282,6 @@ class SimpleArtistDetails(MbArtistDetails):
             parts[i]["include"] = False
 
     return parts
-
 
   @staticmethod
   def parse_simple_artist_franchise(track_product, track_album_artist, product_list: dict) -> dict:

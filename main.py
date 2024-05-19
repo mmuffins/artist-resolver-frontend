@@ -36,7 +36,8 @@ class TrackManagerGUI:
         "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":100, "editable":False, "display":True},
         "joinphrase": {"source_object":"mbartist_details", "property":"joinphrase", "display_name":"Join Phrase", "width":100, "editable":False, "display":False},
         "custom_name": {"source_object":"mbartist_details", "property":"custom_name", "display_name":"Custom Name", "width":100, "editable":True, "display":True},
-        "custom_original_name": {"source_object":"mbartist_details", "property":"custom_original_name", "display_name":"Custom Orig Name", "width":100, "editable":True, "display":True}
+        "custom_original_name": {"source_object":"mbartist_details", "property":"custom_original_name", "display_name":"Custom Orig Name", "width":100, "editable":True, "display":True},
+        "updated_from_server": {"source_object":"mbartist_details", "property":"updated_from_server", "display_name":"Has Server Information", "width":100, "editable":False, "display":False},
     }
 
     def __init__(self, root, api_host, api_port):

@@ -764,3 +764,46 @@ async def test_alias_found_when_saving_points_to_wrong_artist(respx_mock):
     assert respx_mock.calls[2].request .method == "POST", "Call to create new alias was not of type POST"
     call_2_content = json.loads(respx_mock.calls[2].request .content.decode())
     assert call_2_content == {'Name': artist.name, 'artistid': artist.id, 'franchiseid': artist.product_id}, f"Post body to create new alias did not match expected object"
+
+
+@pytest.mark.asyncio
+@respx.mock(assert_all_mocked=True)
+async def test_update_from_simple_artist_dict_sets_updated_from_server(respx_mock):
+    # Arrange
+    manager = TrackManager()
+
+    artist = SimpleArtistDetails(
+        name="SimpleArtist",
+        type="Person",
+        disambiguation="",
+        sort_name="SimpleArtist",
+        id="mock-artist-id",
+        aliases=[],
+        type_id="b6e035f4-3ce9-331c-97df-83397230b0df",
+        joinphrase="",
+        product="TestProduct",
+        product_id="1"
+    )
+
+    manager.artist_data[artist.mbid] = artist
+
+    # Mock the DB call to return artist data
+    respx_mock.route(
+        method="GET",
+        port=manager.api_port,
+        host=manager.api_host,
+        path=f"/api/alias",
+        params={"name": artist.name, "franchiseId": artist.product_id},
+    ).mock(return_value=httpx.Response(200, json=[{
+        "artistId": 1,
+        "name": "SimpleArtist",
+        "artist": "UpdatedArtist",
+        "franchiseId": 1,
+        "id": 1,
+    }]))
+
+    # Act
+    await manager.update_artists_info_from_db()
+
+    # Assert
+    assert artist.updated_from_server, "Expected artist.updated_from_server to be True"

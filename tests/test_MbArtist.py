@@ -294,3 +294,42 @@ async def test_mbid_found_on_server_when_saving_data_changed(respx_mock):
     call_1_content = json.loads(respx_mock.calls[1].request.content.decode())
     assert call_1_content == {"MbId": artist.mbid, "Name": artist.custom_name, "OriginalName": artist.custom_original_name, "Include": artist.include}, f"Post body to update artist did not match expected object"
 
+
+@pytest.mark.asyncio
+@respx.mock(assert_all_mocked=True)
+async def test_update_from_customization_sets_updated_from_server(respx_mock):
+    # Arrange
+    manager = TrackManager()
+
+    artist = MbArtistDetails(
+        name="MbArtist",
+        type="Person",
+        disambiguation="",
+        sort_name="MbArtist",
+        id="mock-artist-id",
+        aliases=[],
+        type_id="b6e035f4-3ce9-331c-97df-83397230b0df",
+        joinphrase=""
+    )
+
+    manager.artist_data[artist.mbid] = artist
+
+    # Mock the DB call to return artist data
+    respx_mock.route(
+        method="GET",
+        port=manager.api_port,
+        host=manager.api_host,
+        path=f"/api/mbartist/mbid/{artist.mbid}"
+    ).mock(return_value=httpx.Response(200, json={
+        "id": 1,
+        "mbid": "mock-artist-id",
+        "name": "UpdatedMbArtist",
+        "originalName": "MbArtist",
+        "include": True
+    }))
+
+    # Act
+    await manager.update_artists_info_from_db()
+
+    # Assert
+    assert artist.updated_from_server, "Expected artist.updated_from_server to be True"
