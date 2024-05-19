@@ -2,6 +2,7 @@
 # TODO: Infer album artist from file path
 # TODO: make gui nicer looking
 # TODO: colors -> grey out rows where included is disabled
+# TODO: colors -> grey out table where update file is disabled
 # TODO: colors -> have specific color for values loaded from the db
 # TODO: colors -> highlight colors that are different from the current id tag / were edited
 # TODO: make gui display error if rest calls fail

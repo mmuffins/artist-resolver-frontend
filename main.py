@@ -119,75 +119,83 @@ class TrackManagerGUI:
             except Exception as e:
                 messagebox.showerror("Error", f"An error occurred querying the server for information:{str(e)}")
 
-            self.populate_tables()
+            self.create_track_tables()
 
-    def populate_tables(self):
-        # Clear existing frames
+    def create_track_tables(self):
+        self.clear_existing_track_frames()
+
+        for track in self.track_manager.tracks:
+            frame = self.create_track_frame(track)
+            self.populate_track_info(frame, track)
+            tree = self.create_treeview(frame, track)
+            self.populate_treeview(tree, track)
+
+    def clear_existing_track_frames(self):
         for widget in self.inner_frame.winfo_children():
             widget.destroy()
 
-        # Populate a new table for each track
-        for track in self.track_manager.tracks:
-            frame = Frame(self.inner_frame)
-            frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
+    def create_track_frame(self, track):
+        frame = Frame(self.inner_frame)
+        frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
+        return frame
 
-            file_path_label = Label(frame, text=f"File Path: {track.file_path}")
-            file_path_label.pack()
+    def populate_track_info(self, frame, track):
+        file_path_label = Label(frame, text=f"File Path: {track.file_path}")
+        file_path_label.pack()
 
-            title_label = Label(frame, text=f"Title: {track.title}")
-            title_label.pack()
+        title_label = Label(frame, text=f"Title: {track.title}")
+        title_label.pack()
 
-            formatted_artist = track.get_artist_string()
-            formatted_artist_label = Label(frame, text=f"Artist: {formatted_artist}")
-            formatted_artist_label.pack()
+        formatted_artist = track.get_artist_string()
+        formatted_artist_label = Label(frame, text=f"Artist: {formatted_artist}")
+        formatted_artist_label.pack()
 
-            # Checkbox to enable or disable file updates
-            update_file_var = BooleanVar(value=track.update_file)
-            update_file_checkbox = Checkbutton(frame, text="Update File", variable=update_file_var, command=lambda t=track, v=update_file_var: self.update_update_file(t, v))
-            update_file_checkbox.pack()
+        update_file_var = BooleanVar(value=track.update_file)
+        update_file_checkbox = Checkbutton(frame, text="Update File", variable=update_file_var, command=lambda t=track, v=update_file_var: self.update_update_file(t, v))
+        update_file_checkbox.pack()
 
-            tree = ttk.Treeview(frame, columns=tuple(self.data_mapping.keys()), show='headings')
+    def create_treeview(self, frame, track):
+        tree = ttk.Treeview(frame, columns=tuple(self.data_mapping.keys()), show='headings')
 
-            # Calculate the appropriate height based on the number of rows
-            num_rows = len(track.mbArtistDetails)
-            row_height = 20  # Height of each row in pixels
-            tree_height = min(num_rows, 10) * row_height  # Max height to show 10 rows at a time
+        num_rows = len(track.mbArtistDetails)
+        row_height = 20
+        tree_height = min(num_rows, 10) * row_height
 
-            tree.pack(expand=True, fill=X, padx=10, pady=10)
-            tree["height"] = num_rows
+        tree.pack(expand=True, fill=X, padx=10, pady=10)
+        tree["height"] = num_rows
 
-            display_columns = [column_id for column_id, settings in self.data_mapping.items() if settings.get("display", False)]
-            tree["displaycolumns"] = display_columns
+        display_columns = [column_id for column_id, settings in self.data_mapping.items() if settings.get("display", False)]
+        tree["displaycolumns"] = display_columns
 
-            # Set properties for each column
-            for column_id, settings in self.data_mapping.items():
-                tree.heading(column_id, text=settings["display_name"])
-                tree.column(column_id, width=settings["width"])
+        for column_id, settings in self.data_mapping.items():
+            tree.heading(column_id, text=settings["display_name"])
+            tree.column(column_id, width=settings["width"])
 
-            tree.bind("<Button-1>", self.on_single_click)
-            tree.bind("<Double-1>", self.on_double_click)
+        tree.bind("<Button-1>", self.on_single_click)
+        tree.bind("<Double-1>", self.on_double_click)
+        
+        return tree
 
-            # Populate the tree with new data
-            for artist_detail in track.mbArtistDetails:
-                values = []
-                for column_id, settings in self.data_mapping.items():
-                    # Determine the source object and property
-                    if settings["source_object"] == "track_details":
-                        value = getattr(track, settings["property"], "")
-                    else:
-                        value = getattr(artist_detail, settings["property"], "")
+    def populate_treeview(self, tree, track):
+        for artist_detail in track.mbArtistDetails:
+            values = self.get_treeview_row_values(track, artist_detail)
+            row = tree.insert("", "end", values=tuple(values))
 
-                    values.append(value)
+            if "include" in self.data_mapping and self.data_mapping["include"]["source_object"] == "mbartist_details":
+                tree.set(row, 'include', '☑' if artist_detail.include else '☐')
 
-                # Insert the new row into the treeview
-                row = tree.insert("", "end", values=tuple(values))
+            self.item_to_object[row] = {"track": track, "artist_detail": artist_detail}
 
-                if "include" in self.data_mapping and self.data_mapping["include"]["source_object"] == "mbartist_details":
-                    tree.set(row, 'include', '☑' if artist_detail.include == True else '☐')
-
-                # Map the row to the corresponding objects for reference
-                self.item_to_object[row] = {"track": track, "artist_detail": artist_detail}
-
+    def get_treeview_row_values(self, track, artist_detail):
+        values = []
+        for column_id, settings in self.data_mapping.items():
+            if settings["source_object"] == "track_details":
+                value = getattr(track, settings["property"], "")
+            else:
+                value = getattr(artist_detail, settings["property"], "")
+            values.append(value)
+        return values
+    
     def update_update_file(self, track, var):
         new_value = var.get()
         if track.update_file != new_value:
@@ -197,7 +205,7 @@ class TrackManagerGUI:
         try:
             asyncio.run(self.track_manager.send_changes_to_db())
             asyncio.run(self.track_manager.save_files())
-            self.populate_tables()
+            self.create_track_tables()
             messagebox.showinfo("Success", "Metadata saved successfully!")
         except Exception as e:
             messagebox.showerror("Error", str(e))
@@ -243,7 +251,7 @@ class TrackManagerGUI:
 
             valueChanged = self.save_value_to_manager(new_value, tree.column(clicked["column"])["id"], row_track["track"], row_track["artist_detail"])
             if(valueChanged == True):
-                self.populate_tables()
+                self.create_track_tables()
 
     def on_double_click(self, event):
         tree = event.widget
@@ -277,7 +285,7 @@ class TrackManagerGUI:
             value_changed = self.save_value_to_manager(new_value, tree.column(column)["id"], row_track["track"], row_track["artist_detail"])
             
             if value_changed:
-                self.populate_tables()
+                self.create_track_tables()
         
         def close_without_saving(event):
             entry.destroy()
