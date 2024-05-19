@@ -6,7 +6,6 @@
 # TODO: colors -> highlight colors that are different from the current id tag / were edited
 # TODO: make gui display error if rest calls fail
 # TODO: Add buttons for common tasks, e.g. copy title to original title
-# TODO: Add check on startup to verify if the server is reachable
 
 import hashlib
 import os
@@ -910,6 +909,21 @@ class TrackManager:
           raise Exception(f"Could not find artist with MBID {artist.id}: {response.text} ({response.status_code} {response.reason_phrase})")
         case _:
           raise Exception(f"Failed to update artist data for MBID {artist.mbid}: {response.text} ({response.status_code} {response.reason_phrase})")
+
+  async def get_api_health(self) -> bool:
+    """
+    Calls the health endpoint of the ai server
+    """
+
+    endpoint = f"http://{self.api_host}:{self.api_port}/health"
+
+    async with httpx.AsyncClient() as client:
+      response = await client.get(f"{endpoint}")
+      if response.status_code == 200:
+        return True
+
+      return False
+
 
 
 async def seedData() -> None:

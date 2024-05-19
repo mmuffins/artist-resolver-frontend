@@ -1,9 +1,9 @@
 import os
 import asyncio
 import argparse
+import httpx
 from tkinter import *
 from tkinter import filedialog, messagebox, ttk
-
 from TrackManager import TrackManager
 
 class TrackManagerGUI:
@@ -35,7 +35,12 @@ class TrackManagerGUI:
         self.api_host = api_host
         self.api_port = api_port
 
-        self.track_manager = TrackManager(self.api_host, self.api_port)
+        try:
+            self.track_manager = TrackManager(self.api_host, self.api_port)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create a TrackManager object: {str(e)}")
+        self.get_server_health()
+        
         self.item_to_object = {}
         self.setup_ui()
 
@@ -82,18 +87,39 @@ class TrackManagerGUI:
         self.tables_canvas.bind_all('<MouseWheel>', self.on_mousewheel)
         self.inner_frame.bind('<Configure>', self.on_inner_frame_configure)
 
+    def get_server_health(self):
+        try:
+            api_is_healthy = asyncio.run(self.track_manager.get_api_health())
+            if api_is_healthy:
+                print("API is healthy")
+            else:
+                messagebox.showerror("Server Health Check Failed", "The server is not healthy. Please check the server status.")
+        except httpx.RequestError as e:
+            messagebox.showerror("Server Unreachable", f"Could not reach the server at {self.api_host}:{self.api_port}. Please ensure the server is running and try again.\n\nDetails: {str(e)}")
+        except Exception as e:
+            messagebox.showerror("Unexpected Error", f"An unexpected error occurred when trying to contact the server: {str(e)}")
 
     def load_directory(self):
         directory = filedialog.askdirectory()
         if directory:
             try:
                 self.track_manager = TrackManager(self.api_host, self.api_port)
-                asyncio.run(self.track_manager.load_directory(directory))
-                asyncio.run(self.track_manager.update_artists_info_from_db())
-                
-                self.populate_tables()
             except Exception as e:
-                messagebox.showerror("Error", str(e))
+                messagebox.showerror("Error", f"Failed to create a TrackManager object: {str(e)}")
+
+            self.get_server_health()
+
+            try:
+                asyncio.run(self.track_manager.load_directory(directory))
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred when reading directory {directory}:{str(e)}")
+            
+            try:
+                asyncio.run(self.track_manager.update_artists_info_from_db())
+            except Exception as e:
+                messagebox.showerror("Error", f"An error occurred querying the server for information:{str(e)}")
+
+            self.populate_tables()
 
     def populate_tables(self):
         # Clear existing frames
@@ -218,7 +244,6 @@ class TrackManagerGUI:
             valueChanged = self.save_value_to_manager(new_value, tree.column(clicked["column"])["id"], row_track["track"], row_track["artist_detail"])
             if(valueChanged == True):
                 self.populate_tables()
-
 
     def on_double_click(self, event):
         tree = event.widget
