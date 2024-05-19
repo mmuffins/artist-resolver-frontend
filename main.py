@@ -2,8 +2,9 @@ import os
 import asyncio
 import argparse
 import httpx
+from enum import Enum
 from tkinter import *
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 from TrackManager import TrackManager
 
 def async_run(func):
@@ -14,6 +15,11 @@ def async_run(func):
         else:
             return loop.run_until_complete(func(*args, **kwargs))
     return wrapper
+
+class toast_type(Enum):
+    info = 1
+    success = 2
+    error = 3
 
 class TrackManagerGUI:
     # Mapping between columns and source data in format
@@ -48,7 +54,7 @@ class TrackManagerGUI:
         try:
             self.track_manager = self.create_track_manager()
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to create a TrackManager object: {str(e)}")
+            self.show_toast(toast_type.error, f"Failed to create a TrackManager object: {str(e)}")
         self.get_server_health()
         
         self.item_to_object = {}
@@ -58,7 +64,7 @@ class TrackManagerGUI:
         try:
             return TrackManager(self.api_host, self.api_port)
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to create a TrackManager object: {str(e)}")
+            self.show_toast(toast_type.error, f"Failed to create a TrackManager object: {str(e)}")
             return None
 
     def setup_ui(self):
@@ -151,6 +157,7 @@ class TrackManagerGUI:
         return actions_frame
 
     def toggle_replace_original_title(self):
+        self.show_toast(toast_type.info, "aaa bbb ccc fff")
         if self.replace_original_title.get():
             self.cb_overwrite_existing_original_title.config(state=NORMAL)
         else:
@@ -164,16 +171,41 @@ class TrackManagerGUI:
             self.cb_overwrite_existing_original_artist.config(state=DISABLED)
             self.overwrite_existing_original_artist.set(False)
 
+    def show_toast(self, type:toast_type, message:str, duration=3000):
+
+        toast = Toplevel(self.root)
+        toast.overrideredirect(True)  # Remove window decorations
+
+        # Calculate the position for the bottom right corner
+        self.root.update_idletasks()  # Ensure geometry info is up-to-date
+        root_x = self.root.winfo_x()
+        root_y = self.root.winfo_y()
+        root_width = self.root.winfo_width()
+        root_height = self.root.winfo_height()
+        toast.geometry(f"+{root_x + (root_width // 2) - 100}+{root_y + root_height - 100}")
+
+        styles = {
+            toast_type.error: {"bg": "red", "fg":"white"},
+            toast_type.info: {"bg": "green", "fg":"black"},
+        }
+        
+        style = styles.get(type, styles[toast_type.info])
+
+        label = Label(toast, text=message, bg=style["bg"], fg=style["fg"], padx=10, pady=5)
+        label.pack()
+
+        self.root.after(duration, toast.destroy)  # Automatically destroy the toast after the duration
+
     @async_run
     async def get_server_health(self):
         try:
             api_is_healthy = await self.track_manager.get_server_health()
             if not api_is_healthy:
-                messagebox.showerror("Server Health Check Failed", "The server is not healthy. Please check the server status.")
+                self.show_toast(toast_type.error, "The server is not healthy. Please check the server status.")
         except httpx.RequestError as e:
-            messagebox.showerror("Server Unreachable", f"Could not reach the server at {self.api_host}:{self.api_port}. Please ensure the server is running and try again.\n\nDetails: {str(e)}")
+            self.show_toast(toast_type.error, f"Could not reach the server at {self.api_host}:{self.api_port}. Please ensure the server is running and try again.\n\nDetails: {str(e)}")
         except Exception as e:
-            messagebox.showerror("Unexpected Error", f"An unexpected error occurred when trying to contact the server: {str(e)}")
+            self.show_toast(toast_type.error, f"An unexpected error occurred when trying to contact the server: {str(e)}")
 
     def load_directory(self):
         directory = filedialog.askdirectory()
@@ -187,12 +219,12 @@ class TrackManagerGUI:
         try:
             await self.track_manager.load_directory(directory)
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred when reading directory {directory}:{str(e)}")
+            self.show_toast(toast_type.error, f"An error occurred when reading directory {directory}:{str(e)}")
         
         try:
             await self.track_manager.update_artists_info_from_db()
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred querying the server for information:{str(e)}")
+            self.show_toast(toast_type.error,  f"An error occurred querying the server for information:{str(e)}")
 
         if self.replace_original_title:
             self.track_manager.replace_original_title(self.overwrite_existing_original_title)
@@ -296,13 +328,13 @@ class TrackManagerGUI:
         try:
             await self.track_manager.send_changes_to_db()
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred when sending update data to the server:{str(e)}")
+            self.show_toast(toast_type.error, f"An error occurred when sending update data to the server:{str(e)}")
         
         try:
             await self.track_manager.save_files()
-            messagebox.showinfo("Success", "Metadata saved successfully!")
+            self.show_toast(toast_type.error, "Metadata saved successfully!")
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred when updating the files:{str(e)}")
+            self.show_toast(toast_type.error, f"An error occurred when updating the files:{str(e)}")
             self.populate_tables()
 
     def get_clicked_cell(self, event, tree):

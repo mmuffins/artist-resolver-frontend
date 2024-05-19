@@ -5,8 +5,6 @@
 # TODO: colors -> grey out table where update file is disabled
 # TODO: colors -> have specific color for values loaded from the db
 # TODO: colors -> highlight colors that are different from the current id tag / were edited
-# TODO: make gui display error if rest calls fail
-# TODO: Add buttons for common tasks, e.g. copy title to original title
 
 import hashlib
 import os
