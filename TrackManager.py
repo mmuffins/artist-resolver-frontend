@@ -7,7 +7,6 @@
 # TODO: colors -> highlight colors that are different from the current id tag / were edited
 # TODO: make gui display error if rest calls fail
 # TODO: Add buttons for common tasks, e.g. copy title to original title
-# TODO: change get_api_health to get_server_health
 
 import hashlib
 import os
@@ -914,7 +913,7 @@ class TrackManager:
         case _:
           raise Exception(f"Failed to update artist data for MBID {artist.mbid}: {response.text} ({response.status_code} {response.reason_phrase})")
 
-  async def get_api_health(self) -> bool:
+  async def get_server_health(self) -> bool:
     """
     Calls the health endpoint of the ai server
     """

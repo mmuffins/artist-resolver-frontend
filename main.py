@@ -112,7 +112,7 @@ class TrackManagerGUI:
     @async_run
     async def get_server_health(self):
         try:
-            api_is_healthy = await self.track_manager.get_api_health()
+            api_is_healthy = await self.track_manager.get_server_health()
             if not api_is_healthy:
                 messagebox.showerror("Server Health Check Failed", "The server is not healthy. Please check the server status.")
         except httpx.RequestError as e:
