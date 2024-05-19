@@ -1,4 +1,6 @@
+import os
 import asyncio
+import argparse
 from tkinter import *
 from tkinter import filedialog, messagebox, ttk
 
@@ -28,9 +30,12 @@ class TrackManagerGUI:
         "custom_original_name": {"source_object":"mbartist_details", "property":"custom_original_name", "display_name":"Custom Orig Name", "width":100, "editable":True, "display":True}
     }
 
-    def __init__(self, root):
+    def __init__(self, root, api_host, api_port):
         self.root = root
-        self.track_manager = TrackManager()
+        self.api_host = api_host
+        self.api_port = api_port
+
+        self.track_manager = TrackManager(self.api_host, self.api_port)
         self.item_to_object = {}
         self.setup_ui()
 
@@ -82,7 +87,7 @@ class TrackManagerGUI:
         directory = filedialog.askdirectory()
         if directory:
             try:
-                self.track_manager = TrackManager()
+                self.track_manager = TrackManager(self.api_host, self.api_port)
                 asyncio.run(self.track_manager.load_directory(directory))
                 asyncio.run(self.track_manager.update_artists_info_from_db())
                 
@@ -281,8 +286,18 @@ class TrackManagerGUI:
         loop.run_until_complete(async_func(*args, **kwargs))
 
 def main():
+    parser = argparse.ArgumentParser(
+    prog = 'Artist Relation Resolver')
+    parser.add_argument('-s', '--host', type=str, required=False ,help="host of the Artist Relation Resolver API")
+    parser.add_argument('-p', '--port', type=str, required=False ,help="Port of the Artist Relation Resolver API")
+
+    args = parser.parse_args()
+
+    api_host = args.host if args.host else os.getenv('ARTIST_RESOLVER_HOST', None)
+    api_port = args.port if args.port else os.getenv('ARTIST_RESOLVER_PORT', None)
+
     root = Tk()
-    app = TrackManagerGUI(root)
+    app = TrackManagerGUI(root, api_host, api_port)
     root.mainloop()
 
 if __name__ == "__main__":

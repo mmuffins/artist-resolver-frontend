@@ -6,6 +6,7 @@
 # TODO: colors -> highlight colors that are different from the current id tag / were edited
 # TODO: make gui display error if rest calls fail
 # TODO: Add buttons for common tasks, e.g. copy title to original title
+# TODO: Add check on startup to verify if the server is reachable
 
 import hashlib
 import os
@@ -456,8 +457,8 @@ class TrackManager:
   SIMPLE_ARTIST_ALIAS_API_ENDPOINT = "api/alias"
   SIMPLE_ARTIST_FRANCHISE_API_ENDPOINT = "api/franchise"
   MBARTIST_API_ENDPOINT = "api/mbartist"
-  API_PORT = 80
-  API_DOMAIN = "artist-resolver.lan"
+  API_PORT = 23409
+  API_DOMAIN = "localhost"
 
   def __init__(self, host:str=None, port:str=None):
     self.tracks: list[TrackDetails] = []
