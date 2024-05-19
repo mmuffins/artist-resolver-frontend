@@ -23,20 +23,20 @@ class TrackManagerGUI:
         "title": {"source_object":"track_details", "property":"title", "display_name":"Track Title", "width":100, "editable":False, "display":False},
         "original_title": {"source_object":"track_details", "property":"original_title", "display_name":"Orig Title", "width":100, "editable":False, "display":False},
         "track_artist": {"source_object":"track_details", "property":"artist", "display_name":"Track Artist", "width":100, "editable":False, "display":False},
-        "artist": {"source_object":"mbartist_details", "property":"name", "display_name":"Artist", "width":100, "editable":False, "display":True},
         "artist_sort": {"source_object":"mbartist_details", "property":"sort_name", "display_name":"Sort Artist", "width":100, "editable":False, "display":False},
         "original_artist": {"source_object":"track_details", "property":"original_artist", "display_name":"Orig Artist", "width":100, "editable":False, "display":False},
-        "album": {"source_object":"track_details", "property":"album", "display_name":"Album", "width":100, "editable":False, "display":True},
+        "album": {"source_object":"track_details", "property":"album", "display_name":"Album", "width":100, "editable":False, "display":False},
         "product": {"source_object":"track_details", "property":"product", "display_name":"Product", "width":100, "editable":False, "display":False},
         "original_album": {"source_object":"track_details", "property":"original_album", "display_name":"Orig Album", "width":100, "editable":False, "display":False},
         "album_artist": {"source_object":"track_details", "property":"album_artist", "display_name":"Album Artist", "width":100, "editable":False, "display":False},
         "grouping": {"source_object":"track_details", "property":"grouping", "display_name":"Grouping", "width":100, "editable":False, "display":False},
-        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"Set", "width":10, "editable":True, "display":True},
+        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"Set", "width":30, "editable":True, "display":True},
         "mbid": {"source_object":"mbartist_details", "property":"mbid", "display_name":"MBID", "width":100, "editable":False, "display":False},
-        "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":100, "editable":False, "display":True},
+        "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":75, "editable":False, "display":True},
+        "artist": {"source_object":"mbartist_details", "property":"name", "display_name":"Artist", "width":100, "editable":False, "display":True},
         "joinphrase": {"source_object":"mbartist_details", "property":"joinphrase", "display_name":"Join Phrase", "width":100, "editable":False, "display":False},
         "custom_name": {"source_object":"mbartist_details", "property":"custom_name", "display_name":"Custom Name", "width":100, "editable":True, "display":True},
-        "custom_original_name": {"source_object":"mbartist_details", "property":"custom_original_name", "display_name":"Custom Orig Name", "width":100, "editable":True, "display":True},
+        "custom_original_name": {"source_object":"mbartist_details", "property":"custom_original_name", "display_name":"Custom Orig Name", "width":100, "editable":False, "display":False},
         "updated_from_server": {"source_object":"mbartist_details", "property":"updated_from_server", "display_name":"Has Server Information", "width":100, "editable":False, "display":False},
     }
 
@@ -63,7 +63,7 @@ class TrackManagerGUI:
 
     def setup_ui(self):
         self.root.title("Track Manager")
-        self.root.geometry("700x380")
+        self.root.geometry("700x600")
         self.root.minsize(800,400)
         self.root.resizable(True, True)
 
@@ -87,13 +87,13 @@ class TrackManagerGUI:
         self.scrollbar = Scrollbar(tables_frame, orient=VERTICAL, command=self.tables_canvas.yview)
         self.scrollbar.pack(side=RIGHT, fill=Y)
 
-        self.inner_frame = Frame(self.tables_canvas)
-        self.tables_canvas_window = self.tables_canvas.create_window((0, 0), window=self.inner_frame, anchor="nw")
+        self.tables_inner_frame = Frame(self.tables_canvas)
+        self.tables_canvas_window = self.tables_canvas.create_window((0, 0), window=self.tables_inner_frame, anchor="nw")
 
         self.tables_canvas.configure(yscrollcommand=self.scrollbar.set)
         self.tables_canvas.bind('<Configure>', self.on_canvas_configure)
         self.tables_canvas.bind_all('<MouseWheel>', self.on_mousewheel)
-        self.inner_frame.bind('<Configure>', self.on_inner_frame_configure)
+        self.tables_inner_frame.bind('<Configure>', self.on_inner_frame_configure)
         
         return tables_frame
 
@@ -101,13 +101,68 @@ class TrackManagerGUI:
         actions_frame = Frame(main_frame)
         actions_frame.pack(padx=10, pady=10, side=BOTTOM)
 
-        self.btn_load_files = Button(actions_frame, text="Select Folder", command=self.load_directory)
-        self.btn_load_files.pack(side=RIGHT)
+        # Checkbox for "Replace original title"
+        self.replace_original_title = BooleanVar(value=True)
+        self.cb_replace_original_title = Checkbutton(
+            actions_frame, 
+            text="Replace original title", 
+            variable=self.replace_original_title,
+            command=self.toggle_replace_original_title
+        )
+        
+        self.cb_replace_original_title.grid(row=0, column=0)
 
-        self.update_button = Button(actions_frame, text="Save Changes", command=self.save_changes)
-        self.update_button.pack(pady=10, side=RIGHT)
+        # Checkbox for "Overwrite existing values" (title)
+        self.overwrite_existing_original_title = BooleanVar(value=False)
+        self.cb_overwrite_existing_original_title = Checkbutton(
+            actions_frame, 
+            text="Overwrite existing values", 
+            variable=self.overwrite_existing_original_title
+        )
+        self.cb_overwrite_existing_original_title.grid(row=1, column=0)
+        self.cb_overwrite_existing_original_title.config(state=NORMAL)
+
+        # Checkbox for "Replace original artists"
+        self.replace_original_artist = BooleanVar(value=True)
+        self.cb_replace_original_artist = Checkbutton(
+            actions_frame, 
+            text="Replace original artists", 
+            variable=self.replace_original_artist,
+            command=self.toggle_replace_original_artist
+        )
+        self.cb_replace_original_artist.grid(row=0, column=1)
+
+        # Checkbox for "Overwrite existing values" (artist)
+        self.overwrite_existing_original_artist = BooleanVar(value=False)
+        self.cb_overwrite_existing_original_artist = Checkbutton(
+            actions_frame, 
+            text="Overwrite existing values", 
+            variable=self.overwrite_existing_original_artist
+        )
+        self.cb_overwrite_existing_original_artist.grid(row=1, column=1)
+        self.cb_overwrite_existing_original_artist.config(state=NORMAL)
+
+        self.btn_load_files = Button(actions_frame, text="Select Folder", command=self.load_directory)
+        self.btn_load_files.grid(row=0, column=2, rowspan=2)
+
+        self.btn_save = Button(actions_frame, text="Save Changes", command=self.save_changes)
+        self.btn_save.grid(row=0, column=3, rowspan=2)
 
         return actions_frame
+
+    def toggle_replace_original_title(self):
+        if self.replace_original_title.get():
+            self.cb_overwrite_existing_original_title.config(state=NORMAL)
+        else:
+            self.cb_overwrite_existing_original_title.config(state=DISABLED)
+            self.overwrite_existing_original_title.set(False)
+
+    def toggle_replace_original_artist(self):
+        if self.replace_original_artist.get():
+            self.cb_overwrite_existing_original_artist.config(state=NORMAL)
+        else:
+            self.cb_overwrite_existing_original_artist.config(state=DISABLED)
+            self.overwrite_existing_original_artist.set(False)
 
     @async_run
     async def get_server_health(self):
@@ -139,40 +194,42 @@ class TrackManagerGUI:
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred querying the server for information:{str(e)}")
 
-        self.create_track_tables()
+        if self.replace_original_title:
+            self.track_manager.replace_original_title(self.overwrite_existing_original_title)
 
-    def create_track_tables(self):
-        self.clear_existing_track_frames()
+        if self.overwrite_existing_original_artist:
+            self.track_manager.replace_original_artist(self.replace_original_artist)
+
+        self.create_track_tables(self.tables_inner_frame)
+
+    def create_track_tables(self, master):
+        self.clear_existing_track_frames(master)
 
         for track in self.track_manager.tracks:
-            frame = self.create_track_frame(track)
+            frame = Frame(master)
+            frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
+
             self.populate_track_info(frame, track)
             tree = self.create_treeview(frame, track)
             self.populate_treeview(tree, track)
 
-    def clear_existing_track_frames(self):
-        for widget in self.inner_frame.winfo_children():
+    def clear_existing_track_frames(self, master):
+        for widget in master.winfo_children():
             widget.destroy()
 
-    def create_track_frame(self, track):
-        frame = Frame(self.inner_frame)
+    def populate_track_info(self, master, track):
+        frame = Frame(master)
         frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
-        return frame
 
-    def populate_track_info(self, frame, track):
-        file_path_label = Label(frame, text=f"File Path: {track.file_path}")
-        file_path_label.pack()
+        update_file = BooleanVar(value=track.update_file)
+        cb_update_file = Checkbutton(frame, text=f"{track.title}", variable=update_file, command=lambda t=track, v=update_file: self.update_update_file(t, v))
+        cb_update_file.grid(column=0, row=0)
 
-        title_label = Label(frame, text=f"Title: {track.title}")
-        title_label.pack()
-
-        formatted_artist = track.get_artist_string()
-        formatted_artist_label = Label(frame, text=f"Artist: {formatted_artist}")
-        formatted_artist_label.pack()
-
-        update_file_var = BooleanVar(value=track.update_file)
-        update_file_checkbox = Checkbutton(frame, text="Update File", variable=update_file_var, command=lambda t=track, v=update_file_var: self.update_update_file(t, v))
-        update_file_checkbox.pack()
+        label_current_track_artist = Label(frame, text=f"Artist: {"; ".join(track.artist)}")
+        label_current_track_artist.grid(column=0, row=1)
+        
+        label_new_track_artist = Label(frame, text=f"Artist: {track.get_artist_string()}")
+        label_new_track_artist.grid(column=1,row=1)
 
     def create_treeview(self, frame, track):
         tree = ttk.Treeview(frame, columns=tuple(self.data_mapping.keys()), show='headings')
@@ -201,10 +258,23 @@ class TrackManagerGUI:
             values = self.get_treeview_row_values(track, artist_detail)
             row = tree.insert("", "end", values=tuple(values))
 
+            # include needs to be handled differently since it gets converted to a checkbox
             if "include" in self.data_mapping and self.data_mapping["include"]["source_object"] == "mbartist_details":
                 tree.set(row, 'include', '☑' if artist_detail.include else '☐')
 
             self.item_to_object[row] = {"track": track, "artist_detail": artist_detail}
+
+        self.enforce_column_widths(tree)
+
+    def enforce_column_widths(self, tree):
+        for column_id, settings in self.data_mapping.items():
+            match column_id:
+                case "include":
+                    tree.column(column_id, minwidth=30, stretch=False)
+                case "type":
+                    tree.column(column_id, minwidth=60, stretch=False)
+                case _:
+                    tree.column(column_id, minwidth=70, stretch=True)
 
     def get_treeview_row_values(self, track, artist_detail):
         values = []
@@ -276,7 +346,7 @@ class TrackManagerGUI:
 
             valueChanged = self.save_value_to_manager(new_value, tree.column(clicked["column"])["id"], row_track["track"], row_track["artist_detail"])
             if(valueChanged == True):
-                self.create_track_tables()
+                self.create_track_tables(self.tables_inner_frame)
 
     def on_double_click(self, event):
         tree = event.widget
@@ -310,7 +380,7 @@ class TrackManagerGUI:
             value_changed = self.save_value_to_manager(new_value, tree.column(column)["id"], row_track["track"], row_track["artist_detail"])
             
             if value_changed:
-                self.create_track_tables()
+                self.create_track_tables(self.tables_inner_frame)
         
         def close_without_saving(event):
             entry.destroy()
