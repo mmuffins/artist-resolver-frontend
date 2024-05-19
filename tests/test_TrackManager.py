@@ -589,3 +589,80 @@ async def test_save_files_mixed_update_file_property(mocker):
     track2.apply_custom_tag_values.assert_not_called()
     track1.save_file_metadata.assert_called_once()
     track2.save_file_metadata.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_replace_original_title_overwrite_true():
+    # Arrange
+    manager = TrackManager()
+    track1 = create_mock_trackdetails()
+    track2 = create_mock_trackdetails()
+    track1.title = "New Title 1"
+    track1.original_title = "Old Title 1"
+    track2.title = "New Title 2"
+    track2.original_title = None
+    manager.tracks = [track1, track2]
+
+    # Act
+    manager.replace_original_title(overwrite=True)
+
+    # Assert
+    assert track1.original_title == "New Title 1", "Failed to overwrite original_title when overwrite=True"
+    assert track2.original_title == "New Title 2", "Failed to set original_title when overwrite=True and original_title is None"
+
+@pytest.mark.asyncio
+async def test_replace_original_title_overwrite_false():
+    # Arrange
+    manager = TrackManager()
+    track1 = create_mock_trackdetails()
+    track2 = create_mock_trackdetails()
+    track1.title = "New Title 1"
+    track1.original_title = "Old Title 1"
+    track2.title = "New Title 2"
+    track2.original_title = None
+    manager.tracks = [track1, track2]
+
+    # Act
+    manager.replace_original_title(overwrite=False)
+
+    # Assert
+    assert track1.original_title == "Old Title 1", "Unexpectedly overwrote original_title when overwrite=False"
+    assert track2.original_title == "New Title 2", "Failed to set original_title when overwrite=False and original_title is None"
+
+@pytest.mark.asyncio
+async def test_replace_original_artist_overwrite_true():
+    # Arrange
+    manager = TrackManager()
+    track1 = create_mock_trackdetails()
+    track2 = create_mock_trackdetails()
+    track1.artist = ["New Artist 1"]
+    track1.original_artist = ["Old Artist 1"]
+    track2.artist = ["New Artist 2"]
+    track2.original_artist = None
+    manager.tracks = [track1, track2]
+
+    # Act
+    manager.replace_original_artist(overwrite=True)
+
+    # Assert
+    assert track1.original_artist == ["New Artist 1"], "Failed to overwrite original_artist when overwrite=True"
+    assert track2.original_artist == ["New Artist 2"], "Failed to set original_artist when overwrite=True and original_artist is None"
+
+@pytest.mark.asyncio
+async def test_replace_original_artist_overwrite_false():
+    # Arrange
+    manager = TrackManager()
+    track1 = create_mock_trackdetails()
+    track2 = create_mock_trackdetails()
+    track1.artist = ["New Artist 1"]
+    track1.original_artist = ["Old Artist 1"]
+    track2.artist = ["New Artist 2"]
+    track2.original_artist = None
+    manager.tracks = [track1, track2]
+
+    # Act
+    manager.replace_original_artist(overwrite=False)
+
+    # Assert
+    assert track1.original_artist == ["Old Artist 1"], "Unexpectedly overwrote original_artist when overwrite=False"
+    assert track2.original_artist == ["New Artist 2"], "Failed to set original_artist when overwrite=False and original_artist is None"

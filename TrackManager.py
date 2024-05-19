@@ -572,6 +572,24 @@ class TrackManager:
 
     return returnObj
 
+  def replace_original_title(self, overwrite: bool = False) -> None:
+    """
+    Replaces the value of original_title with the value from title for all tracks.
+    """
+    
+    for track in self.tracks:
+      if overwrite or (not track.original_title):
+        track.original_title = track.title
+
+  def replace_original_artist(self, overwrite: bool = False) -> None:
+    """
+    Replaces the value of original_artist with the value from artist for all tracks.
+    """
+
+    for track in self.tracks:
+      if overwrite or (not track.original_artist):
+        track.original_artist = track.artist
+
   async def send_changes_to_db(self) -> None:
     """
     Sends changes for all artists in the local artist_data list to the db

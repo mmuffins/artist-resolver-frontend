@@ -74,7 +74,7 @@ class TrackManagerGUI:
         main_frame.pack(fill=BOTH, expand=True)
         
         self.tables_frame = self.setup_tables_frame(main_frame)
-        self.buttons_frame = self.setup_buttons_frame(main_frame)
+        self.actions_frame = self.setup_actions_frame(main_frame)
 
     def setup_tables_frame(self, main_frame):
         tables_frame = Frame(main_frame)
@@ -97,17 +97,17 @@ class TrackManagerGUI:
         
         return tables_frame
 
-    def setup_buttons_frame(self, main_frame):
-        buttons_frame = Frame(main_frame)
-        buttons_frame.pack(padx=10, pady=10, side=BOTTOM)
+    def setup_actions_frame(self, main_frame):
+        actions_frame = Frame(main_frame)
+        actions_frame.pack(padx=10, pady=10, side=BOTTOM)
 
-        self.btn_load_files = Button(buttons_frame, text="Select Folder", command=self.load_directory)
+        self.btn_load_files = Button(actions_frame, text="Select Folder", command=self.load_directory)
         self.btn_load_files.pack(side=RIGHT)
 
-        self.update_button = Button(buttons_frame, text="Save Changes", command=self.save_changes)
+        self.update_button = Button(actions_frame, text="Save Changes", command=self.save_changes)
         self.update_button.pack(pady=10, side=RIGHT)
 
-        return buttons_frame
+        return actions_frame
 
     @async_run
     async def get_server_health(self):
