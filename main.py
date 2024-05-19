@@ -6,6 +6,15 @@ from tkinter import *
 from tkinter import filedialog, messagebox, ttk
 from TrackManager import TrackManager
 
+def async_run(func):
+    def wrapper(*args, **kwargs):
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            return asyncio.create_task(func(*args, **kwargs))
+        else:
+            return loop.run_until_complete(func(*args, **kwargs))
+    return wrapper
+
 class TrackManagerGUI:
     # Mapping between columns and source data in format
     data_mapping = {
@@ -36,13 +45,20 @@ class TrackManagerGUI:
         self.api_port = api_port
 
         try:
-            self.track_manager = TrackManager(self.api_host, self.api_port)
+            self.track_manager = self.create_track_manager()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create a TrackManager object: {str(e)}")
         self.get_server_health()
         
         self.item_to_object = {}
         self.setup_ui()
+
+    def create_track_manager(self) -> TrackManager:
+        try:
+            return TrackManager(self.api_host, self.api_port)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create a TrackManager object: {str(e)}")
+            return None
 
     def setup_ui(self):
         self.root.title("Track Manager")
@@ -53,46 +69,50 @@ class TrackManagerGUI:
         self.setup_layout()
 
     def setup_layout(self):
-        # main frame to hold elements
         main_frame = Frame(self.root)
         main_frame.pack(fill=BOTH, expand=True)
         
-        self.tables_frame = Frame(main_frame)
-        self.tables_frame.pack(padx=10, pady=10, fill=BOTH, expand=True)
+        self.tables_frame = self.setup_tables_frame(main_frame)
+        self.buttons_frame = self.setup_buttons_frame(main_frame)
 
-        # frames don't support scrollbars by themselves, so we need to define a canvaas
-        self.tables_canvas = Canvas(self.tables_frame)
+    def setup_tables_frame(self, main_frame):
+        tables_frame = Frame(main_frame)
+        tables_frame.pack(padx=10, pady=10, fill=BOTH, expand=True)
+
+        # frames don't support scrolling by themselves, so we need to create a canvas
+        self.tables_canvas = Canvas(tables_frame)
         self.tables_canvas.pack(side=LEFT, fill=BOTH, expand=True)
 
-        # Add a scrollbar to the tables_frame
-        self.scrollbar = Scrollbar(self.tables_frame, orient=VERTICAL, command=self.tables_canvas.yview)
+        self.scrollbar = Scrollbar(tables_frame, orient=VERTICAL, command=self.tables_canvas.yview)
         self.scrollbar.pack(side=RIGHT, fill=Y)
 
         self.inner_frame = Frame(self.tables_canvas)
         self.tables_canvas_window = self.tables_canvas.create_window((0, 0), window=self.inner_frame, anchor="nw")
 
-        self.buttons_frame = Frame(main_frame)
-        self.buttons_frame.pack(padx=10, pady=10, side=BOTTOM)
-
-        # Button to choose directory
-        self.btn_select_dir = Button(self.buttons_frame, text="Select Folder", command=self.load_directory)
-        self.btn_select_dir.pack(side=RIGHT)
-
-        # Button to update metadata
-        self.update_button = Button(self.buttons_frame, text="Save Changes", command=self.save_changes)
-        self.update_button.pack(pady=10, side=RIGHT)
-
         self.tables_canvas.configure(yscrollcommand=self.scrollbar.set)
         self.tables_canvas.bind('<Configure>', self.on_canvas_configure)
         self.tables_canvas.bind_all('<MouseWheel>', self.on_mousewheel)
         self.inner_frame.bind('<Configure>', self.on_inner_frame_configure)
+        
+        return tables_frame
 
-    def get_server_health(self):
+    def setup_buttons_frame(self, main_frame):
+        buttons_frame = Frame(main_frame)
+        buttons_frame.pack(padx=10, pady=10, side=BOTTOM)
+
+        self.btn_load_files = Button(buttons_frame, text="Select Folder", command=self.load_directory)
+        self.btn_load_files.pack(side=RIGHT)
+
+        self.update_button = Button(buttons_frame, text="Save Changes", command=self.save_changes)
+        self.update_button.pack(pady=10, side=RIGHT)
+
+        return buttons_frame
+
+    @async_run
+    async def get_server_health(self):
         try:
-            api_is_healthy = asyncio.run(self.track_manager.get_api_health())
-            if api_is_healthy:
-                print("API is healthy")
-            else:
+            api_is_healthy = await self.track_manager.get_api_health()
+            if not api_is_healthy:
                 messagebox.showerror("Server Health Check Failed", "The server is not healthy. Please check the server status.")
         except httpx.RequestError as e:
             messagebox.showerror("Server Unreachable", f"Could not reach the server at {self.api_host}:{self.api_port}. Please ensure the server is running and try again.\n\nDetails: {str(e)}")
@@ -102,24 +122,23 @@ class TrackManagerGUI:
     def load_directory(self):
         directory = filedialog.askdirectory()
         if directory:
-            try:
-                self.track_manager = TrackManager(self.api_host, self.api_port)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to create a TrackManager object: {str(e)}")
-
+            self.track_manager = self.create_track_manager()
             self.get_server_health()
+            self.load_and_update_directory(directory)
 
-            try:
-                asyncio.run(self.track_manager.load_directory(directory))
-            except Exception as e:
-                messagebox.showerror("Error", f"An error occurred when reading directory {directory}:{str(e)}")
-            
-            try:
-                asyncio.run(self.track_manager.update_artists_info_from_db())
-            except Exception as e:
-                messagebox.showerror("Error", f"An error occurred querying the server for information:{str(e)}")
+    @async_run
+    async def load_and_update_directory(self, directory):
+        try:
+            await self.track_manager.load_directory(directory)
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred when reading directory {directory}:{str(e)}")
+        
+        try:
+            await self.track_manager.update_artists_info_from_db()
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred querying the server for information:{str(e)}")
 
-            self.create_track_tables()
+        self.create_track_tables()
 
     def create_track_tables(self):
         self.clear_existing_track_frames()
@@ -201,14 +220,19 @@ class TrackManagerGUI:
         if track.update_file != new_value:
             track.update_file = new_value
 
-    def save_changes(self):
+    @async_run
+    async def save_changes(self):
         try:
-            asyncio.run(self.track_manager.send_changes_to_db())
-            asyncio.run(self.track_manager.save_files())
-            self.create_track_tables()
+            await self.track_manager.send_changes_to_db()
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred when sending update data to the server:{str(e)}")
+        
+        try:
+            await self.track_manager.save_files()
             messagebox.showinfo("Success", "Metadata saved successfully!")
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror("Error", f"An error occurred when updating the files:{str(e)}")
+            self.populate_tables()
 
     def get_clicked_cell(self, event, tree):
         region = tree.identify("region", event.x, event.y)
