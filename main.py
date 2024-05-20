@@ -313,6 +313,8 @@ class TrackManagerGUI:
             if artist_detail in item_to_row_id:
                 row_id = item_to_row_id[artist_detail]
                 for column_id, value in zip(self.data_mapping.keys(), values):
+                    if column_id == "include":
+                        value = '☑' if value else '☐'
                     tree.set(row_id, column_id, value)
             else:
                 row_id = tree.insert("", "end", values=tuple(values))
@@ -321,6 +323,7 @@ class TrackManagerGUI:
                     tree.set(row_id, 'include', '☑' if artist_detail.include else '☐')
 
         self.enforce_column_widths(tree)
+
 
     def enforce_column_widths(self, tree):
         for column_id, settings in self.data_mapping.items():
@@ -339,8 +342,11 @@ class TrackManagerGUI:
                 value = getattr(track, settings["property"], "")
             else:
                 value = getattr(artist_detail, settings["property"], "")
+            if column_id == "include":
+                value = '☑' if value else '☐'
             values.append(value)
         return values
+
     
     def update_update_file(self, track, var):
         new_value = var.get()
@@ -398,7 +404,9 @@ class TrackManagerGUI:
 
             value_changed = self.save_value_to_manager(new_value, tree.column(clicked["column"])["id"], row_track["track"], row_track["artist_detail"])
             if value_changed:
-                self.populate_treeview(tree, row_track["track"])
+                display_value = '☑' if new_value else '☐'
+                tree.set(clicked["row"], clicked["column"], display_value)
+
 
     def on_double_click(self, event):
         tree = event.widget
@@ -466,11 +474,12 @@ class TrackManagerGUI:
         for track, tree in self.treeviews.items():
             for row_id, obj in tree.item_to_object.items():
                 if obj['artist_detail'] == mbartist_details:
-                    tree.set(row_id, column_id, new_value)
-                    if column_id == 'include':
-                        tree.set(row_id, 'include', '☑' if new_value else '☐')
+                    display_value = '☑' if new_value and column_id == "include" else '☐' if not new_value and column_id == "include" else new_value
+                    tree.set(row_id, column_id, display_value)
 
         return True
+
+
 
 
     def run_sync(self, async_func, *args, **kwargs):
