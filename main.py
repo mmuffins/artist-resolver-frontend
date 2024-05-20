@@ -264,14 +264,25 @@ class TrackManagerGUI:
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_columnconfigure(1, weight=1)
 
+        custom_font = ("Helvetica", 12, "bold")
         update_file = BooleanVar(value=track.update_file)
-        cb_update_file = Checkbutton(frame, text=f"{track.title}", variable=update_file, command=lambda t=track, v=update_file: self.update_update_file(t, v))
+        cb_update_file = Checkbutton(
+            frame, 
+            text=f"{track.title}", 
+            variable=update_file, 
+            command=lambda t=track, v=update_file: self.update_update_file(t, v),
+            font=custom_font,
+            fg="blue",  # Font color
+            padx=10,
+            pady=5
+        )
+
         cb_update_file.grid(column=0, row=0, sticky=W)
 
-        label_current_track_artist = Label(frame, text=f"Artist: {'; '.join(track.artist)}")
+        label_current_track_artist = Label(frame, text=f"{'; '.join(track.artist)}")
         label_current_track_artist.grid(column=0, row=1, sticky=W)
         
-        label_new_track_artist = Label(frame, text=f"Artist: {track.get_artist_string()}")
+        label_new_track_artist = Label(frame, text=f"{track.get_artist_string()}")
         label_new_track_artist.grid(column=0, row=2, sticky=W)
 
         # Store references to the labels in the track object for later updating
@@ -294,6 +305,9 @@ class TrackManagerGUI:
         for column_id, settings in self.data_mapping.items():
             tree.heading(column_id, text=settings["display_name"])
             tree.column(column_id, width=settings["width"])
+
+        # Define the tag for red-colored cells
+        tree.tag_configure('red_font', foreground='red')
 
         tree.bind("<Button-1>", self.on_single_click)
         tree.bind("<Double-1>", self.on_double_click)
@@ -325,6 +339,12 @@ class TrackManagerGUI:
                 tree.item_to_object[row_id] = {"track": track, "artist_detail": artist_detail}
                 if "include" in self.data_mapping and self.data_mapping["include"]["source_object"] == "mbartist_details":
                     tree.set(row_id, 'include', '☑' if artist_detail.include else '☐')
+
+            # Apply the red cell tag to the custom_name column if the condition is met
+            custom_name = artist_detail.custom_name
+            artist_name = artist_detail.name
+            if custom_name != artist_name:
+                tree.item(row_id, tags=('red_font',))
 
         self.enforce_column_widths(tree)
 
@@ -486,8 +506,8 @@ class TrackManagerGUI:
             current_artists = "; ".join(track.artist)
             new_artists = track.get_artist_string()
 
-            track.label_current_track_artist.config(text=f"Current Artist: {current_artists}")
-            track.label_new_track_artist.config(text=f"New Artist: {new_artists}")
+            track.label_current_track_artist.config(text=f"{current_artists}")
+            track.label_new_track_artist.config(text=f"{new_artists}")
 
 
     def run_sync(self, async_func, *args, **kwargs):

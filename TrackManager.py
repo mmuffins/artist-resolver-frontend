@@ -4,6 +4,7 @@
 # TODO: colors -> grey out table where update file is disabled
 # TODO: colors -> have specific color for values loaded from the db
 # TODO: colors -> highlight colors that are different from the current id tag / were edited
+# TODO: Update toast to ttkbootstrap toast widget
 
 import hashlib
 import os
