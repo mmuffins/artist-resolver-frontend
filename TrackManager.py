@@ -1,6 +1,5 @@
 # TODO: check if aliases can be used for better naming predictions
 # TODO: Infer album artist from file path
-# TODO: make gui nicer looking
 # TODO: colors -> grey out rows where included is disabled
 # TODO: colors -> grey out table where update file is disabled
 # TODO: colors -> have specific color for values loaded from the db

@@ -39,7 +39,7 @@ class TrackManagerGUI:
         "original_album": {"source_object":"track_details", "property":"original_album", "display_name":"Orig Album", "width":100, "editable":False, "display":False},
         "album_artist": {"source_object":"track_details", "property":"album_artist", "display_name":"Album Artist", "width":100, "editable":False, "display":False},
         "grouping": {"source_object":"track_details", "property":"grouping", "display_name":"Grouping", "width":100, "editable":False, "display":False},
-        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"Set", "width":30, "editable":False, "display":True},
+        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"", "width":30, "editable":False, "display":True},
         "mbid": {"source_object":"mbartist_details", "property":"mbid", "display_name":"MBID", "width":100, "editable":False, "display":False},
         "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":75, "editable":False, "display":True},
         "artist": {"source_object":"mbartist_details", "property":"name", "display_name":"Artist", "width":100, "editable":False, "display":True},
@@ -53,6 +53,9 @@ class TrackManagerGUI:
         self.root = root
         self.api_host = api_host
         self.api_port = api_port
+
+        # Set the scaling factor
+        self.root.tk.call("tk", "scaling", 2.0)
 
         try:
             self.track_manager = self.create_track_manager()
@@ -70,7 +73,7 @@ class TrackManagerGUI:
 
     def setup_ui(self):
         self.root.title("Track Manager")
-        self.root.geometry("700x600")
+        self.root.geometry("1000x600")
         self.root.minsize(800,400)
         self.root.resizable(True, True)
 
@@ -493,9 +496,10 @@ class TrackManagerGUI:
 
 def main():
     parser = argparse.ArgumentParser(
-    prog = 'Artist Relation Resolver')
-    parser.add_argument('-s', '--host', type=str, required=False ,help="host of the Artist Relation Resolver API")
-    parser.add_argument('-p', '--port', type=str, required=False ,help="Port of the Artist Relation Resolver API")
+        prog='Artist Relation Resolver'
+    )
+    parser.add_argument('-s', '--host', type=str, required=False, help="host of the Artist Relation Resolver API")
+    parser.add_argument('-p', '--port', type=str, required=False, help="Port of the Artist Relation Resolver API")
 
     args = parser.parse_args()
 
