@@ -238,15 +238,24 @@ class TrackManagerGUI:
         self.create_track_tables(self.tables_inner_frame)
 
     def create_track_tables(self, master):
-        self.clear_existing_track_frames(master)
+        if not hasattr(self, 'treeviews'):
+            self.treeviews = {}
 
-        for track in self.track_manager.tracks:
-            frame = Frame(master)
-            frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
+        if not self.treeviews:
+            self.clear_existing_track_frames(master)
+            for track in self.track_manager.tracks:
+                frame = Frame(master)
+                frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
 
-            self.populate_track_info(frame, track)
-            tree = self.create_treeview(frame, track)
-            self.populate_treeview(tree, track)
+                self.populate_track_info(frame, track)
+                tree = self.create_treeview(frame, track)
+                self.treeviews[track] = tree  # Store the treeview for later updates
+                self.populate_treeview(tree, track)
+        else:
+            for track, tree in self.treeviews.items():
+                self.populate_treeview(tree, track)
+
+
 
     def clear_existing_track_frames(self, master):
         for widget in master.winfo_children():
@@ -296,15 +305,20 @@ class TrackManagerGUI:
         return tree
 
     def populate_treeview(self, tree, track):
+        existing_items = tree.get_children()
+        item_to_row_id = {tree.item_to_object[row]['artist_detail']: row for row in existing_items}
+
         for artist_detail in track.mbArtistDetails:
             values = self.get_treeview_row_values(track, artist_detail)
-            row = tree.insert("", "end", values=tuple(values))
-
-            # include needs to be handled differently since it gets converted to a checkbox
-            if "include" in self.data_mapping and self.data_mapping["include"]["source_object"] == "mbartist_details":
-                tree.set(row, 'include', '☑' if artist_detail.include else '☐')
-
-            tree.item_to_object[row] = {"track": track, "artist_detail": artist_detail}
+            if artist_detail in item_to_row_id:
+                row_id = item_to_row_id[artist_detail]
+                for column_id, value in zip(self.data_mapping.keys(), values):
+                    tree.set(row_id, column_id, value)
+            else:
+                row_id = tree.insert("", "end", values=tuple(values))
+                tree.item_to_object[row_id] = {"track": track, "artist_detail": artist_detail}
+                if "include" in self.data_mapping and self.data_mapping["include"]["source_object"] == "mbartist_details":
+                    tree.set(row_id, 'include', '☑' if artist_detail.include else '☐')
 
         self.enforce_column_widths(tree)
 
@@ -371,34 +385,31 @@ class TrackManagerGUI:
     def on_single_click(self, event):
         tree = event.widget
         clicked = self.get_clicked_cell(event, tree)
-        if (clicked == None):
+        if clicked is None:
             return
-            
-        # include is the only column that changes its value on a single click,
-        # so it needs to be treated differently
-        if ((tree.column(clicked["column"])["id"] == "include") and 
-            (self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] == True)):
-            
+
+        if tree.column(clicked["column"])["id"] == "include" and self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] == True:
             row_track = tree.item_to_object.get(clicked["row"])
-            if (None == row_track):
+            if row_track is None:
                 raise Exception("Row has no track details.")
-            
+
             current_value = tree.set(clicked["row"], clicked["column"])
-            # clicking doesn't automatically change the value, so we need to flip it
             new_value = False if current_value == '☑' else True
 
-            valueChanged = self.save_value_to_manager(new_value, tree.column(clicked["column"])["id"], row_track["track"], row_track["artist_detail"])
-            if(valueChanged == True):
-                self.create_track_tables(self.tables_inner_frame)
+            value_changed = self.save_value_to_manager(new_value, tree.column(clicked["column"])["id"], row_track["track"], row_track["artist_detail"])
+            if value_changed:
+                self.populate_treeview(tree, row_track["track"])
 
     def on_double_click(self, event):
         tree = event.widget
         clicked = self.get_clicked_cell(event, tree)
-        if(clicked == None):
+        if clicked is None:
             return
 
-        if (self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] == True):
+        if self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] == True:
             self.edit_cell(clicked["row"], clicked["column"], event, tree)
+
+
 
     def edit_cell(self, row, column, event, tree):
         # Create the Entry widget and place it at the cell position
@@ -432,13 +443,13 @@ class TrackManagerGUI:
         entry.bind("<FocusOut>", save_new_value)
         entry.bind("<Escape>", close_without_saving)
 
-    def save_value_to_manager(self, new_value, column_id:str, track_details, mbartist_details) -> bool:
+    def save_value_to_manager(self, new_value, column_id: str, track_details, mbartist_details) -> bool:
         if column_id not in self.data_mapping:
             raise Exception(f"column id {column_id} was not found in data mapping.")
-        
+
         # Retrieve the object and attribute name
         mapping = self.data_mapping[column_id]
-        if(mapping["source_object"] == "track_details"):
+        if mapping["source_object"] == "track_details":
             source_obj = track_details
         else:
             source_obj = mbartist_details
@@ -450,7 +461,17 @@ class TrackManagerGUI:
 
         # Update the value
         setattr(source_obj, mapping["property"], new_value)
+
+        # Update the relevant treeview items
+        for track, tree in self.treeviews.items():
+            for row_id, obj in tree.item_to_object.items():
+                if obj['artist_detail'] == mbartist_details:
+                    tree.set(row_id, column_id, new_value)
+                    if column_id == 'include':
+                        tree.set(row_id, 'include', '☑' if new_value else '☐')
+
         return True
+
 
     def run_sync(self, async_func, *args, **kwargs):
         loop = asyncio.get_event_loop()
