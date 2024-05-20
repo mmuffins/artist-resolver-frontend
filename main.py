@@ -7,6 +7,7 @@ from tkinter import *
 from tkinter import filedialog
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
+from ttkbootstrap.scrolled import ScrolledFrame
 from TrackManager import TrackManager
 
 def async_run(func):
@@ -82,26 +83,19 @@ class TrackManagerGUI:
         self.tables_frame = self.setup_tables_frame(main_frame)
         self.actions_frame = self.setup_actions_frame(main_frame)
 
+
     def setup_tables_frame(self, main_frame):
-        tables_frame = Frame(main_frame)
+        tables_frame = ttk.Frame(main_frame)
         tables_frame.pack(padx=10, pady=10, fill=BOTH, expand=True)
 
-        # frames don't support scrolling by themselves, so we need to create a canvas
-        self.tables_canvas = Canvas(tables_frame)
-        self.tables_canvas.pack(side=LEFT, fill=BOTH, expand=True)
+        self.scrolled_frame = ScrolledFrame(tables_frame, bootstyle="primary", autohide=False)
+        self.scrolled_frame.autohide_scrollbar = True
+        self.scrolled_frame.pack(fill=BOTH, expand=True)
 
-        self.scrollbar = Scrollbar(tables_frame, orient=VERTICAL, command=self.tables_canvas.yview)
-        self.scrollbar.pack(side=RIGHT, fill=Y)
-
-        self.tables_inner_frame = Frame(self.tables_canvas)
-        self.tables_canvas_window = self.tables_canvas.create_window((0, 0), window=self.tables_inner_frame, anchor="nw")
-
-        self.tables_canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.tables_canvas.bind('<Configure>', self.on_canvas_configure)
-        self.tables_canvas.bind_all('<MouseWheel>', self.on_mousewheel)
-        self.tables_inner_frame.bind('<Configure>', self.on_inner_frame_configure)
+        self.tables_inner_frame = Frame(self.scrolled_frame)
+        self.tables_inner_frame.pack(padx=0, pady=0, fill=BOTH, expand=True)
         
-        return tables_frame
+        return self.tables_inner_frame
 
     def setup_actions_frame(self, main_frame):
         actions_frame = Frame(main_frame)
@@ -235,27 +229,22 @@ class TrackManagerGUI:
         if self.overwrite_existing_original_artist:
             self.track_manager.replace_original_artist(self.replace_original_artist)
 
-        self.create_track_tables(self.tables_inner_frame)
+        self.create_track_tables(self.tables_frame)
 
     def create_track_tables(self, master):
         if not hasattr(self, 'treeviews'):
             self.treeviews = {}
 
-        if not self.treeviews:
-            self.clear_existing_track_frames(master)
-            for track in self.track_manager.tracks:
-                frame = Frame(master)
-                frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
+        self.clear_existing_track_frames(master)
+        
+        for track in self.track_manager.tracks:
+            frame = Frame(master)
+            frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
 
-                self.populate_track_info(frame, track)
-                tree = self.create_treeview(frame, track)
-                self.treeviews[track] = tree  # Store the treeview for later updates
-                self.populate_treeview(tree, track)
-        else:
-            for track, tree in self.treeviews.items():
-                self.populate_treeview(tree, track)
-
-
+            self.populate_track_info(frame, track)
+            tree = self.create_treeview(frame, track)
+            self.treeviews[track] = tree  # Store the treeview for later updates
+            self.populate_treeview(tree, track)
 
     def clear_existing_track_frames(self, master):
         for widget in master.winfo_children():
@@ -305,7 +294,12 @@ class TrackManagerGUI:
         return tree
 
     def populate_treeview(self, tree, track):
-        existing_items = tree.get_children()
+        try:
+            existing_items = tree.get_children()
+        except ttk.TclError:
+            # If the treeview no longer exists, return early
+            return
+        
         item_to_row_id = {tree.item_to_object[row]['artist_detail']: row for row in existing_items}
 
         for artist_detail in track.mbArtistDetails:
@@ -323,7 +317,6 @@ class TrackManagerGUI:
                     tree.set(row_id, 'include', '☑' if artist_detail.include else '☐')
 
         self.enforce_column_widths(tree)
-
 
     def enforce_column_widths(self, tree):
         for column_id, settings in self.data_mapping.items():
@@ -366,7 +359,7 @@ class TrackManagerGUI:
         except Exception as e:
             self.show_toast(toast_type.error, f"An error occurred when updating the files:{str(e)}")
         
-        self.create_track_tables(self.tables_inner_frame)
+        self.create_track_tables(self.tables_frame)
 
     def get_clicked_cell(self, event, tree):
         region = tree.identify("region", event.x, event.y)
@@ -407,7 +400,6 @@ class TrackManagerGUI:
                 display_value = '☑' if new_value else '☐'
                 tree.set(clicked["row"], clicked["column"], display_value)
 
-
     def on_double_click(self, event):
         tree = event.widget
         clicked = self.get_clicked_cell(event, tree)
@@ -417,10 +409,7 @@ class TrackManagerGUI:
         if self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] == True:
             self.edit_cell(clicked["row"], clicked["column"], event, tree)
 
-
-
     def edit_cell(self, row, column, event, tree):
-        # Create the Entry widget and place it at the cell position
         x, y, w, h = tree.bbox(row, column)
 
         entry = Entry(tree)
@@ -434,7 +423,6 @@ class TrackManagerGUI:
             tree.set(row, column=column, value=new_value)
             entry.destroy()
 
-            # Update the underlying data structure
             row_track = tree.item_to_object.get(row)
             if row_track is None:
                 raise Exception("Row has no track details.")
@@ -479,9 +467,6 @@ class TrackManagerGUI:
 
         return True
 
-
-
-
     def run_sync(self, async_func, *args, **kwargs):
         loop = asyncio.get_event_loop()
         loop.run_until_complete(async_func(*args, **kwargs))
@@ -498,7 +483,6 @@ def main():
     api_port = args.port if args.port else os.getenv('ARTIST_RESOLVER_PORT', None)
 
     root = ttk.Window(themename="darkly")
-    
     app = TrackManagerGUI(root, api_host, api_port)
     root.mainloop()
 
