@@ -4,7 +4,9 @@ import argparse
 import httpx
 from enum import Enum
 from tkinter import *
-from tkinter import filedialog, ttk
+from tkinter import filedialog
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
 from TrackManager import TrackManager
 
 def async_run(func):
@@ -56,8 +58,6 @@ class TrackManagerGUI:
         except Exception as e:
             self.show_toast(toast_type.error, f"Failed to create a TrackManager object: {str(e)}")
         self.get_server_health()
-        
-        self.item_to_object = {}
         self.setup_ui()
 
     def create_track_manager(self) -> TrackManager:
@@ -105,7 +105,7 @@ class TrackManagerGUI:
 
     def setup_actions_frame(self, main_frame):
         actions_frame = Frame(main_frame)
-        actions_frame.pack(padx=10, pady=10, side=BOTTOM)
+        actions_frame.pack(padx=10, pady=10, side=BOTTOM, fill=X)
 
         # Checkbox for "Replace original title"
         self.replace_original_title = BooleanVar(value=True)
@@ -116,7 +116,7 @@ class TrackManagerGUI:
             command=self.toggle_replace_original_title
         )
         
-        self.cb_replace_original_title.grid(row=0, column=0)
+        self.cb_replace_original_title.grid(row=0, column=0, sticky=W, padx=5, pady=2)
 
         # Checkbox for "Overwrite existing values" (title)
         self.overwrite_existing_original_title = BooleanVar(value=False)
@@ -125,7 +125,7 @@ class TrackManagerGUI:
             text="Overwrite existing values", 
             variable=self.overwrite_existing_original_title
         )
-        self.cb_overwrite_existing_original_title.grid(row=1, column=0)
+        self.cb_overwrite_existing_original_title.grid(row=1, column=0, sticky=W, padx=5, pady=2)
         self.cb_overwrite_existing_original_title.config(state=NORMAL)
 
         # Checkbox for "Replace original artists"
@@ -136,7 +136,7 @@ class TrackManagerGUI:
             variable=self.replace_original_artist,
             command=self.toggle_replace_original_artist
         )
-        self.cb_replace_original_artist.grid(row=0, column=1)
+        self.cb_replace_original_artist.grid(row=0, column=1, sticky=W, padx=5, pady=2)
 
         # Checkbox for "Overwrite existing values" (artist)
         self.overwrite_existing_original_artist = BooleanVar(value=False)
@@ -145,14 +145,17 @@ class TrackManagerGUI:
             text="Overwrite existing values", 
             variable=self.overwrite_existing_original_artist
         )
-        self.cb_overwrite_existing_original_artist.grid(row=1, column=1)
+        self.cb_overwrite_existing_original_artist.grid(row=1, column=1, sticky=W, padx=5, pady=2)
         self.cb_overwrite_existing_original_artist.config(state=NORMAL)
 
         self.btn_load_files = Button(actions_frame, text="Select Folder", command=self.load_directory)
-        self.btn_load_files.grid(row=0, column=2, rowspan=2)
+        self.btn_load_files.grid(row=0, column=2, rowspan=2, sticky=E, padx=5, pady=2)
 
         self.btn_save = Button(actions_frame, text="Save Changes", command=self.save_changes)
-        self.btn_save.grid(row=0, column=3, rowspan=2)
+        self.btn_save.grid(row=0, column=3, rowspan=2, sticky=E, padx=5, pady=2)
+
+        # Make the third column expand to push the buttons to the right
+        actions_frame.grid_columnconfigure(2, weight=1)
 
         return actions_frame
 
@@ -253,18 +256,22 @@ class TrackManagerGUI:
         frame = Frame(master)
         frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
 
+        # Use grid for alignment
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(1, weight=1)
+
         update_file = BooleanVar(value=track.update_file)
         cb_update_file = Checkbutton(frame, text=f"{track.title}", variable=update_file, command=lambda t=track, v=update_file: self.update_update_file(t, v))
-        cb_update_file.grid(column=0, row=0)
+        cb_update_file.grid(column=0, row=0, sticky=W)
 
         label_current_track_artist = Label(frame, text=f"Artist: {"; ".join(track.artist)}")
-        label_current_track_artist.grid(column=0, row=1)
+        label_current_track_artist.grid(column=0, row=1, sticky=W)
         
         label_new_track_artist = Label(frame, text=f"Artist: {track.get_artist_string()}")
-        label_new_track_artist.grid(column=1,row=1)
+        label_new_track_artist.grid(column=0,row=2, sticky=W)
 
     def create_treeview(self, frame, track):
-        tree = ttk.Treeview(frame, columns=tuple(self.data_mapping.keys()), show='headings')
+        tree = ttk.Treeview(frame, columns=tuple(self.data_mapping.keys()), show='headings', bootstyle=DEFAULT)
 
         num_rows = len(track.mbArtistDetails)
         row_height = 20
@@ -282,6 +289,9 @@ class TrackManagerGUI:
 
         tree.bind("<Button-1>", self.on_single_click)
         tree.bind("<Double-1>", self.on_double_click)
+
+        # Initialize the mapping dictionary for this treeview
+        tree.item_to_object = {}
         
         return tree
 
@@ -294,7 +304,7 @@ class TrackManagerGUI:
             if "include" in self.data_mapping and self.data_mapping["include"]["source_object"] == "mbartist_details":
                 tree.set(row, 'include', '☑' if artist_detail.include else '☐')
 
-            self.item_to_object[row] = {"track": track, "artist_detail": artist_detail}
+            tree.item_to_object[row] = {"track": track, "artist_detail": artist_detail}
 
         self.enforce_column_widths(tree)
 
@@ -335,7 +345,8 @@ class TrackManagerGUI:
             self.show_toast(toast_type.error, "Metadata saved successfully!")
         except Exception as e:
             self.show_toast(toast_type.error, f"An error occurred when updating the files:{str(e)}")
-            self.populate_tables()
+        
+        self.create_track_tables(self.tables_inner_frame)
 
     def get_clicked_cell(self, event, tree):
         region = tree.identify("region", event.x, event.y)
@@ -368,7 +379,7 @@ class TrackManagerGUI:
         if ((tree.column(clicked["column"])["id"] == "include") and 
             (self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] == True)):
             
-            row_track = self.item_to_object.get(clicked["row"])
+            row_track = tree.item_to_object.get(clicked["row"])
             if (None == row_track):
                 raise Exception("Row has no track details.")
             
@@ -405,7 +416,7 @@ class TrackManagerGUI:
             entry.destroy()
 
             # Update the underlying data structure
-            row_track = self.item_to_object.get(row)
+            row_track = tree.item_to_object.get(row)
             if row_track is None:
                 raise Exception("Row has no track details.")
             
@@ -456,7 +467,8 @@ def main():
     api_host = args.host if args.host else os.getenv('ARTIST_RESOLVER_HOST', None)
     api_port = args.port if args.port else os.getenv('ARTIST_RESOLVER_PORT', None)
 
-    root = Tk()
+    root = ttk.Window(themename="darkly")
+    
     app = TrackManagerGUI(root, api_host, api_port)
     root.mainloop()
 
