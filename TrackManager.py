@@ -107,7 +107,7 @@ class MbArtistDetails:
       joinphrase=data.get("joinphrase", "")
     )
 
-    if(artist.type.lower() not in ["person", "group"]):
+    if(not artist.type) or (artist.type.lower() not in ["person", "group"]):
       artist.include = False
 
     if not any(a.mbid == artist.mbid for a in artist_list):
