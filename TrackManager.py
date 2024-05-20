@@ -107,6 +107,9 @@ class MbArtistDetails:
       joinphrase=data.get("joinphrase", "")
     )
 
+    if(artist.type.lower() not in ["person", "group"]):
+      artist.include = False
+
     if not any(a.mbid == artist.mbid for a in artist_list):
       artist_list.append(artist)
 
@@ -594,10 +597,10 @@ class TrackManager:
     """
 
     for artist in self.artist_data.values():
-      if(artist.include != True):
-        continue
-
       if isinstance(artist, SimpleArtistDetails):
+        if(artist.include != True):
+          continue
+        
         await self.send_simple_artist_changes_to_db(artist)
         await self.send_simple_artist_alias_changes_to_db(artist)
       else:
