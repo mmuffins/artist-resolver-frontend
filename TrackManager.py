@@ -11,6 +11,7 @@ import re
 import json
 import httpx
 import asyncio
+from urllib.parse import urlencode
 from typing import List, Optional
 from mutagen import id3
 
@@ -593,10 +594,10 @@ class TrackManager:
     """
 
     for artist in self.artist_data.values():
-      if isinstance(artist, SimpleArtistDetails):
-        if(artist.include != True):
-          continue
+      if(artist.include != True):
+        continue
 
+      if isinstance(artist, SimpleArtistDetails):
         await self.send_simple_artist_changes_to_db(artist)
         await self.send_simple_artist_alias_changes_to_db(artist)
       else:
@@ -726,8 +727,13 @@ class TrackManager:
     if not name:
       raise ValueError("No parameters were provided to query.")
 
+    params = {}
+    params['name'] = name
+
+    query_string = urlencode(params)
+
     async with httpx.AsyncClient() as client:
-      response = await client.get(f"{endpoint}?name={name.replace(" ", "")}")
+      response = await client.get(f"{endpoint}?{query_string}")
       if response.status_code == 200:
         return response.json()
       else:
@@ -749,7 +755,7 @@ class TrackManager:
     if not params:
       raise ValueError("No parameters were provided to query.")
     
-    query_string = "&".join([f"{key}={value}" for key, value in params.items()])
+    query_string = urlencode(params)
 
     async with httpx.AsyncClient() as client:
       response = await client.get(f"{endpoint}?{query_string}")
@@ -777,7 +783,7 @@ class TrackManager:
     if not params:
       raise ValueError("No parameters were provided to query.")
     
-    query_string = "&".join([f"{key}={value}" for key, value in params.items()])
+    query_string = urlencode(params)
 
     async with httpx.AsyncClient() as client:
       response = await client.get(f"{endpoint}?{query_string}")
