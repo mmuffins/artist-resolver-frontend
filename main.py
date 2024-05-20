@@ -107,41 +107,45 @@ class TrackManagerGUI:
 
         # Checkbox for "Replace original title"
         self.replace_original_title = BooleanVar(value=True)
-        self.cb_replace_original_title = Checkbutton(
+        self.cb_replace_original_title = ttk.Checkbutton(
             actions_frame, 
             text="Replace original title", 
             variable=self.replace_original_title,
-            command=self.toggle_replace_original_title
+            command=self.toggle_replace_original_title,
+            bootstyle=DEFAULT
         )
         
         self.cb_replace_original_title.grid(row=0, column=0, sticky=W, padx=5, pady=2)
 
         # Checkbox for "Overwrite existing values" (title)
         self.overwrite_existing_original_title = BooleanVar(value=False)
-        self.cb_overwrite_existing_original_title = Checkbutton(
+        self.cb_overwrite_existing_original_title = ttk.Checkbutton(
             actions_frame, 
             text="Overwrite existing values", 
-            variable=self.overwrite_existing_original_title
+            variable=self.overwrite_existing_original_title,
+            bootstyle=DEFAULT
         )
         self.cb_overwrite_existing_original_title.grid(row=1, column=0, sticky=W, padx=5, pady=2)
         self.cb_overwrite_existing_original_title.config(state=NORMAL)
 
         # Checkbox for "Replace original artists"
         self.replace_original_artist = BooleanVar(value=True)
-        self.cb_replace_original_artist = Checkbutton(
+        self.cb_replace_original_artist = ttk.Checkbutton(
             actions_frame, 
             text="Replace original artists", 
             variable=self.replace_original_artist,
-            command=self.toggle_replace_original_artist
+            command=self.toggle_replace_original_artist,
+            bootstyle=DEFAULT
         )
         self.cb_replace_original_artist.grid(row=0, column=1, sticky=W, padx=5, pady=2)
 
         # Checkbox for "Overwrite existing values" (artist)
         self.overwrite_existing_original_artist = BooleanVar(value=False)
-        self.cb_overwrite_existing_original_artist = Checkbutton(
+        self.cb_overwrite_existing_original_artist = ttk.Checkbutton(
             actions_frame, 
             text="Overwrite existing values", 
-            variable=self.overwrite_existing_original_artist
+            variable=self.overwrite_existing_original_artist,
+            bootstyle=DEFAULT
         )
         self.cb_overwrite_existing_original_artist.grid(row=1, column=1, sticky=W, padx=5, pady=2)
         self.cb_overwrite_existing_original_artist.config(state=NORMAL)
@@ -158,8 +162,6 @@ class TrackManagerGUI:
         return actions_frame
 
     def toggle_replace_original_title(self):
-        self.show_toast(None, "aaa bbb ccc fff", DANGER)
-
         if self.replace_original_title.get():
             self.cb_overwrite_existing_original_title.config(state=NORMAL)
         else:
@@ -177,13 +179,6 @@ class TrackManagerGUI:
         toast_x = self.root.winfo_x() + ((self.root.winfo_width()) // 2) - 100
         toast_y = self.root.winfo_y() + (self.root.winfo_height()) - 100
         
-        # styles = {
-        #     toast_type.error: {"bg": "red", "fg":"white"},
-        #     toast_type.info: {"bg": "green", "fg":"black"},
-        # }
-        
-        # style = styles.get(type, styles[toast_type.info])
-
         toast = ToastNotification(
             icon="",
             title="",
@@ -241,7 +236,7 @@ class TrackManagerGUI:
         
         for track in self.track_manager.tracks:
             frame = Frame(master)
-            frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
+            frame.pack(expand=True, fill=BOTH, padx=10, pady=5)
 
             self.populate_track_info(frame, track)
             tree = self.create_treeview(frame, track)
@@ -265,7 +260,7 @@ class TrackManagerGUI:
 
         custom_font = ("Helvetica", 12, "bold")
         update_file = BooleanVar(value=track.update_file)
-        cb_update_file = Checkbutton(
+        cb_update_file = ttk.Checkbutton(
             frame, 
             text=f"{track.title}", 
             variable=update_file, 
@@ -273,15 +268,16 @@ class TrackManagerGUI:
             font=custom_font,
             fg="blue",  # Font color
             padx=10,
-            pady=5
+            pady=1,
+            bootstyle=DEFAULT
         )
 
         cb_update_file.grid(column=0, row=0, sticky=W)
 
-        label_current_track_artist = Label(frame, text=f"{'; '.join(track.artist)}")
+        label_current_track_artist = Label(frame, text=f"{'; '.join(track.artist)}", pady=1)
         label_current_track_artist.grid(column=0, row=1, sticky=W)
         
-        label_new_track_artist = Label(frame, text=f"{track.get_artist_string()}")
+        label_new_track_artist = Label(frame, text=f"{track.get_artist_string()}", pady=1)
         label_new_track_artist.grid(column=0, row=2, sticky=W)
 
         # Store references to the labels in the track object for later updating
