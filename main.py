@@ -39,7 +39,7 @@ class TrackManagerGUI:
         "original_album": {"source_object":"track_details", "property":"original_album", "display_name":"Orig Album", "width":100, "editable":False, "display":False},
         "album_artist": {"source_object":"track_details", "property":"album_artist", "display_name":"Album Artist", "width":100, "editable":False, "display":False},
         "grouping": {"source_object":"track_details", "property":"grouping", "display_name":"Grouping", "width":100, "editable":False, "display":False},
-        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"Set", "width":30, "editable":True, "display":True},
+        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"Set", "width":30, "editable":False, "display":True},
         "mbid": {"source_object":"mbartist_details", "property":"mbid", "display_name":"MBID", "width":100, "editable":False, "display":False},
         "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":75, "editable":False, "display":True},
         "artist": {"source_object":"mbartist_details", "property":"name", "display_name":"Artist", "width":100, "editable":False, "display":True},
@@ -246,6 +246,9 @@ class TrackManagerGUI:
             self.treeviews[track] = tree  # Store the treeview for later updates
             self.populate_treeview(tree, track)
 
+        # Update the artist labels
+        self.update_artist_labels()
+
     def clear_existing_track_frames(self, master):
         for widget in master.winfo_children():
             widget.destroy()
@@ -262,11 +265,15 @@ class TrackManagerGUI:
         cb_update_file = Checkbutton(frame, text=f"{track.title}", variable=update_file, command=lambda t=track, v=update_file: self.update_update_file(t, v))
         cb_update_file.grid(column=0, row=0, sticky=W)
 
-        label_current_track_artist = Label(frame, text=f"Artist: {"; ".join(track.artist)}")
+        label_current_track_artist = Label(frame, text=f"Artist: {'; '.join(track.artist)}")
         label_current_track_artist.grid(column=0, row=1, sticky=W)
         
         label_new_track_artist = Label(frame, text=f"Artist: {track.get_artist_string()}")
-        label_new_track_artist.grid(column=0,row=2, sticky=W)
+        label_new_track_artist.grid(column=0, row=2, sticky=W)
+
+        # Store references to the labels in the track object for later updating
+        track.label_current_track_artist = label_current_track_artist
+        track.label_new_track_artist = label_new_track_artist
 
     def create_treeview(self, frame, track):
         tree = ttk.Treeview(frame, columns=tuple(self.data_mapping.keys()), show='headings', bootstyle=DEFAULT)
@@ -387,7 +394,7 @@ class TrackManagerGUI:
         if clicked is None:
             return
 
-        if tree.column(clicked["column"])["id"] == "include" and self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] == True:
+        if tree.column(clicked["column"])["id"] == "include":
             row_track = tree.item_to_object.get(clicked["row"])
             if row_track is None:
                 raise Exception("Row has no track details.")
@@ -465,7 +472,20 @@ class TrackManagerGUI:
                     display_value = '☑' if new_value and column_id == "include" else '☐' if not new_value and column_id == "include" else new_value
                     tree.set(row_id, column_id, display_value)
 
+        # Update the artist labels
+        self.update_artist_labels()
+
         return True
+
+    def update_artist_labels(self):
+        for track in self.track_manager.tracks:
+            # Update each label with the current artist information
+            current_artists = "; ".join(track.artist)
+            new_artists = track.get_artist_string()
+
+            track.label_current_track_artist.config(text=f"Current Artist: {current_artists}")
+            track.label_new_track_artist.config(text=f"New Artist: {new_artists}")
+
 
     def run_sync(self, async_func, *args, **kwargs):
         loop = asyncio.get_event_loop()
