@@ -81,7 +81,7 @@ class TrackManagerGUI:
         self.setup_layout()
 
     def setup_layout(self):
-        main_frame = Frame(self.root)
+        main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=BOTH, expand=True)
         
         self.tables_frame = self.setup_tables_frame(main_frame)
@@ -96,13 +96,13 @@ class TrackManagerGUI:
         self.scrolled_frame.autohide_scrollbar = True
         self.scrolled_frame.pack(fill=BOTH, expand=True)
 
-        self.tables_inner_frame = Frame(self.scrolled_frame)
+        self.tables_inner_frame = ttk.Frame(self.scrolled_frame)
         self.tables_inner_frame.pack(padx=0, pady=0, fill=BOTH, expand=True)
         
         return self.tables_inner_frame
 
     def setup_actions_frame(self, main_frame):
-        actions_frame = Frame(main_frame)
+        actions_frame = ttk.Frame(main_frame)
         actions_frame.pack(padx=10, pady=10, side=BOTTOM, fill=X)
 
         # Checkbox for "Replace original title"
@@ -235,7 +235,7 @@ class TrackManagerGUI:
         self.clear_existing_track_frames(master)
         
         for track in self.track_manager.tracks:
-            frame = Frame(master)
+            frame = ttk.Frame(master)
             frame.pack(expand=True, fill=BOTH, padx=10, pady=5)
 
             self.populate_track_info(frame, track)
@@ -251,7 +251,7 @@ class TrackManagerGUI:
             widget.destroy()
 
     def populate_track_info(self, master, track):
-        frame = Frame(master)
+        frame = ttk.Frame(master)
         frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
 
         # Use grid for alignment
@@ -260,7 +260,7 @@ class TrackManagerGUI:
 
         custom_font = ("Helvetica", 12, "bold")
         update_file = BooleanVar(value=track.update_file)
-        cb_update_file = ttk.Checkbutton(
+        cb_update_file = Checkbutton(
             frame, 
             text=f"{track.title}", 
             variable=update_file, 
@@ -268,8 +268,7 @@ class TrackManagerGUI:
             font=custom_font,
             fg="blue",  # Font color
             padx=10,
-            pady=1,
-            bootstyle=DEFAULT
+            pady=1
         )
 
         cb_update_file.grid(column=0, row=0, sticky=W)
@@ -285,7 +284,12 @@ class TrackManagerGUI:
         track.label_new_track_artist = label_new_track_artist
 
     def create_treeview(self, frame, track):
-        tree = ttk.Treeview(frame, columns=tuple(self.data_mapping.keys()), show='headings', bootstyle=DEFAULT)
+        tree = ttk.Treeview(
+            frame, 
+            columns=tuple(self.data_mapping.keys()), 
+            show='headings',
+            bootstyle=DARK
+        )
 
         num_rows = len(track.mbArtistDetails)
         row_height = 20
