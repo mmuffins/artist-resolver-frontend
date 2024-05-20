@@ -600,7 +600,7 @@ class TrackManager:
       if isinstance(artist, SimpleArtistDetails):
         if(artist.include != True):
           continue
-        
+
         await self.send_simple_artist_changes_to_db(artist)
         await self.send_simple_artist_alias_changes_to_db(artist)
       else:
@@ -810,7 +810,7 @@ class TrackManager:
       "Name": artist.custom_name,
       "OriginalName": artist.custom_original_name,
       "Include": artist.include
-    },
+    }
 
     async with httpx.AsyncClient() as client:
       response = await client.post(endpoint, json=data)
