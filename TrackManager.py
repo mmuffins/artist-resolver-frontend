@@ -75,7 +75,8 @@ class MbArtistDetails:
     """
     display_name = self.custom_name if self.custom_name else self.name
     if self.type.lower() in ["character", "group"]:
-      return f"({display_name})"
+      return f"({display_name.strip('()')})"
+    
     return display_name
   
   def update_from_customization(self, data: dict) -> None:

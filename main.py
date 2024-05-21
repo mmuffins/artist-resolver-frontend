@@ -42,7 +42,7 @@ class TrackManagerGUI:
         "grouping": {"source_object":"track_details", "property":"grouping", "display_name":"Grouping", "width":100, "editable":False, "display":False},
         "include": {"source_object":"mbartist_details", "property":"include", "display_name":"", "width":30, "editable":False, "display":True},
         "mbid": {"source_object":"mbartist_details", "property":"mbid", "display_name":"MBID", "width":100, "editable":False, "display":False},
-        "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":75, "editable":False, "display":True},
+        "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":85, "editable":False, "display":True},
         "artist": {"source_object":"mbartist_details", "property":"name", "display_name":"Artist", "width":100, "editable":False, "display":True},
         "joinphrase": {"source_object":"mbartist_details", "property":"joinphrase", "display_name":"Join Phrase", "width":100, "editable":False, "display":False},
         "custom_name": {"source_object":"mbartist_details", "property":"custom_name", "display_name":"Custom Name", "width":100, "editable":True, "display":True},
@@ -353,7 +353,7 @@ class TrackManagerGUI:
                 case "include":
                     tree.column(column_id, minwidth=30, stretch=False)
                 case "type":
-                    tree.column(column_id, minwidth=60, stretch=False)
+                    tree.column(column_id, minwidth=70, stretch=False)
                 case _:
                     tree.column(column_id, minwidth=70, stretch=True)
 
