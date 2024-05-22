@@ -145,16 +145,10 @@ async def test_trackmanager_load_directory(mocker):
     # Assert
     manager.read_file_metadata.assert_awaited_once()
     assert len(manager.tracks) == 3
-    assert any(
-        track.file_path == "/fake/directory/dir1/subdir1\\file1.mp3"
-        for track in manager.tracks
-    )
-    assert any(
-        track.file_path == "/fake/directory/dir4\\file1.mp3" for track in manager.tracks
-    )
-    assert any(
-        track.file_path == "/fake/directory/dir4\\file2.mp3" for track in manager.tracks
-    )
+    assert manager.tracks[0].file_path == "/fake/directory/dir1/subdir1\\file1.mp3"
+    assert manager.tracks[1].file_path == "/fake/directory/dir4\\file1.mp3"
+    assert manager.tracks[2].file_path == "/fake/directory/dir4\\file2.mp3"
+
 
 
 @pytest.mark.asyncio

@@ -1093,10 +1093,7 @@ class TrackManager:
 
 async def main() -> None:
     manager = TrackManager()
-    dir = "C:/Users/email_000/Desktop/music/sample/nodetailsmultiple"
-    dir = "C:/Users/email_000/Desktop/music/sample/detailsmultiple"
-    dir = "C:/Users/email_000/Desktop/music/sample/recall"
-    dir = "C:/Users/email_000/Desktop/music/sample/nodetails2"
+    dir = "C:/Users/x/Desktop/music/sample/nodetailsmultiple"
     await manager.load_directory(dir)
     await manager.update_artists_info_from_db()
     # await manager.send_changes_to_db()
