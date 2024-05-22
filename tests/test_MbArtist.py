@@ -174,7 +174,7 @@ async def test_mbid_not_found_in_db_when_saving(respx_mock):
     # post new artist
     assert respx_mock.calls[1].request.method == "POST", "Call to update artist was not of type UPDATE"
     call_1_content = json.loads(respx_mock.calls[1].request.content.decode())
-    assert call_1_content[0] == {"MbId": artist.mbid, "Name": artist.custom_name, "OriginalName": artist.custom_original_name, "Include": artist.include}, f"Post body to update artist did not match expected object"
+    assert call_1_content == {"MbId": artist.mbid, "Name": artist.custom_name, "OriginalName": artist.custom_original_name, "Include": artist.include}, f"Post body to update artist did not match expected object"
 
 
 @pytest.mark.asyncio
