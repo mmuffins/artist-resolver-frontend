@@ -1,3 +1,4 @@
+import os
 import pytest
 import httpx
 import respx
@@ -145,10 +146,9 @@ async def test_trackmanager_load_directory(mocker):
     # Assert
     manager.read_file_metadata.assert_awaited_once()
     assert len(manager.tracks) == 3
-    assert manager.tracks[0].file_path == "/fake/directory/dir1/subdir1\\file1.mp3"
-    assert manager.tracks[1].file_path == "/fake/directory/dir4\\file1.mp3"
-    assert manager.tracks[2].file_path == "/fake/directory/dir4\\file2.mp3"
-
+    assert os.path.normpath(manager.tracks[0].file_path) == os.path.normpath("/fake/directory/dir1/subdir1/file1.mp3")
+    assert os.path.normpath(manager.tracks[1].file_path) == os.path.normpath("/fake/directory/dir4/file1.mp3")
+    assert os.path.normpath(manager.tracks[2].file_path) == os.path.normpath("/fake/directory/dir4/file2.mp3")
 
 
 @pytest.mark.asyncio
