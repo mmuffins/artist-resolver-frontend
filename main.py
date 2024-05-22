@@ -30,7 +30,7 @@ class TrackManagerGUI:
     data_mapping = {
         "file_path": {"source_object":"track_details", "property":"file_path", "display_name":"File Path", "width":100, "editable":False, "display":False},
         "update_file": {"source_object":"track_details", "property":"update_file", "display_name":"Update", "width":100, "editable":False, "display":False},
-        "title": {"source_object":"track_details", "property":"title", "display_name":"Track Title", "width":100, "editable":False, "display":False},
+        "title": {"source_object":"track_details", "property":"title", "display_name":"Track Title", "width":100, "editable":False, "display":True},
         "original_title": {"source_object":"track_details", "property":"original_title", "display_name":"Orig Title", "width":100, "editable":False, "display":False},
         "track_artist": {"source_object":"track_details", "property":"artist", "display_name":"Track Artist", "width":100, "editable":False, "display":False},
         "artist_sort": {"source_object":"mbartist_details", "property":"sort_name", "display_name":"Sort Artist", "width":100, "editable":False, "display":False},
@@ -40,11 +40,11 @@ class TrackManagerGUI:
         "original_album": {"source_object":"track_details", "property":"original_album", "display_name":"Orig Album", "width":100, "editable":False, "display":False},
         "album_artist": {"source_object":"track_details", "property":"album_artist", "display_name":"Album Artist", "width":100, "editable":False, "display":False},
         "grouping": {"source_object":"track_details", "property":"grouping", "display_name":"Grouping", "width":100, "editable":False, "display":False},
-        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"", "width":30, "editable":False, "display":True},
         "mbid": {"source_object":"mbartist_details", "property":"mbid", "display_name":"MBID", "width":100, "editable":False, "display":False},
         "type": {"source_object":"mbartist_details", "property":"type", "display_name":"Type", "width":85, "editable":False, "display":True},
         "artist": {"source_object":"mbartist_details", "property":"name", "display_name":"Artist", "width":100, "editable":False, "display":True},
         "joinphrase": {"source_object":"mbartist_details", "property":"joinphrase", "display_name":"Join Phrase", "width":100, "editable":False, "display":False},
+        "include": {"source_object":"mbartist_details", "property":"include", "display_name":"", "width":30, "editable":False, "display":True},
         "custom_name": {"source_object":"mbartist_details", "property":"custom_name", "display_name":"Custom Name", "width":100, "editable":True, "display":True},
         "custom_original_name": {"source_object":"mbartist_details", "property":"custom_original_name", "display_name":"Custom Orig Name", "width":100, "editable":False, "display":False},
         "updated_from_server": {"source_object":"mbartist_details", "property":"updated_from_server", "display_name":"Has Server Information", "width":100, "editable":False, "display":False},
@@ -150,11 +150,11 @@ class TrackManagerGUI:
         self.cb_overwrite_existing_original_artist.grid(row=1, column=1, sticky=W, padx=5, pady=2)
         self.cb_overwrite_existing_original_artist.config(state=NORMAL)
 
-        self.btn_load_files = Button(actions_frame, text="Select Folder", command=self.load_directory)
-        self.btn_load_files.grid(row=0, column=2, rowspan=2, sticky=E, padx=5, pady=2)
+        self.btn_save = Button(actions_frame, text="Save", command=self.save_changes)
+        self.btn_save.grid(row=0, column=2, rowspan=2, sticky=E, padx=40, pady=2)
 
-        self.btn_save = Button(actions_frame, text="Save Changes", command=self.save_changes)
-        self.btn_save.grid(row=0, column=3, rowspan=2, sticky=E, padx=5, pady=2)
+        self.btn_load_files = Button(actions_frame, text="Select Folder", command=self.load_directory)
+        self.btn_load_files.grid(row=0, column=3, rowspan=2, sticky=E, padx=5, pady=2)
 
         # Make the third column expand to push the buttons to the right
         actions_frame.grid_columnconfigure(2, weight=1)
@@ -267,19 +267,20 @@ class TrackManagerGUI:
             command=lambda t=track, v=update_file: self.update_update_file(t, v),
             font=custom_font,
             fg="blue",  # Font color
-            padx=10,
+            padx=1,
             pady=1
         )
 
         cb_update_file.grid(column=0, row=0, sticky=W)
 
         label_current_track_artist = Label(frame, text=f"{'; '.join(track.artist)}", pady=1)
-        label_current_track_artist.grid(column=0, row=1, sticky=W)
+        label_current_track_artist.grid(column=1, row=0, sticky=W)
         
         label_new_track_artist = Label(frame, text=f"{track.get_artist_string()}", pady=1)
         label_new_track_artist.grid(column=0, row=2, sticky=W)
 
         # Store references to the labels in the track object for later updating
+        track.cb_update_file = cb_update_file
         track.label_current_track_artist = label_current_track_artist
         track.label_new_track_artist = label_new_track_artist
 
@@ -505,6 +506,7 @@ class TrackManagerGUI:
             current_artists = "; ".join(track.artist)
             new_artists = track.get_artist_string()
 
+            track.cb_update_file.config(text=f"{track.title}")
             track.label_current_track_artist.config(text=f"{current_artists}")
             track.label_new_track_artist.config(text=f"{new_artists}")
 
