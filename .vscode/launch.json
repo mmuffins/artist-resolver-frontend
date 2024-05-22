@@ -31,6 +31,19 @@
       ],
     },
     {
+      "name": "PyQt",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main2.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "args": [
+        "--host", "localhost"
+        ,"--port", "23409"
+      ],
+    },
+
+    {
       "name": "Debug Unit Tests",
       "type": "debugpy",
       "request": "launch",
