@@ -5,3 +5,6 @@ exclude =
   settings.py
   venv
   .venv
+ignore = 
+  E501 
+  F403
