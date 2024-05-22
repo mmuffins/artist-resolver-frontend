@@ -11,6 +11,7 @@ from ttkbootstrap.scrolled import ScrolledFrame
 from TrackManager import TrackManager
 from ttkbootstrap.toast import ToastNotification
 
+
 def async_run(func):
     def wrapper(*args, **kwargs):
         loop = asyncio.get_event_loop()
