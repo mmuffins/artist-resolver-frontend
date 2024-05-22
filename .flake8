@@ -7,4 +7,5 @@ exclude =
   .venv
 ignore = 
   E501 
-  F403
+  F403, F405, F541
+  W503
