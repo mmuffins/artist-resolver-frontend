@@ -1,0 +1,7 @@
+httpx~=0.27.0
+mutagen~=1.47.0
+pytest~=8.2.0
+pytest-mock~=3.14.0
+pytest-asyncio~=0.23.0
+respx~=0.21.0
+ttkbootstrap~=1.10.0
