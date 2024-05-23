@@ -148,13 +148,14 @@ class TrackManagerGUI(QMainWindow):
 
         self.api_host = api_host
         self.api_port = api_port
-        self.track_manager = TrackManager(host=api_host, port=api_port)
+        self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
+
         self.initUI()
         self.show()
 
         app.exec()
 
-    def initUI(self):
+    def initUI(self) -> None:
         self.setWindowTitle("Track Manager")
         self.setGeometry(100, 100, 1000, 600)
 
@@ -190,22 +191,30 @@ class TrackManagerGUI(QMainWindow):
 
         self.track_view = QTreeView(self)
         self.layout.addWidget(self.track_view)
+        self.clear_data()
+        
+
+    def load_directory(self) -> None:
+        # directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        # if directory:
+        directory = "C:/Users/email_000/Desktop/music/sample/spiceandwolf"
+        
+        async def load_and_update():
+            self.clear_data()
+
+            await self.track_manager.load_directory(directory)
+            await self.track_manager.update_artists_info_from_db()
+
+            self.track_model.layoutChanged.emit() 
+            self.track_view.expandAll()  
+
+        asyncio.run(load_and_update())
+        print(f"Selected directory: {directory}")
+
+    def clear_data(self) -> TrackModel:
+        self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
         self.track_model = TrackModel(self.track_manager)
         self.track_view.setModel(self.track_model)
-
-    def load_directory(self):
-        directory = QFileDialog.getExistingDirectory(self, "Select Directory")
-        if directory:
-            self.track_manager.tracks = []  # Reset track list
-            self.track_manager.artist_data = {}  # Reset artist data
-
-            async def load_and_update():
-                await self.track_manager.load_directory(directory)
-                await self.track_manager.update_artists_info_from_db()
-                self.track_model.layoutChanged.emit()  # Refresh the view
-
-            asyncio.run(load_and_update())
-            print(f"Selected directory: {directory}")
 
 
 def main():
@@ -229,6 +238,13 @@ def main():
 
     api_host = args.host if args.host else os.getenv("ARTIST_RESOLVER_HOST", None)
     api_port = args.port if args.port else os.getenv("ARTIST_RESOLVER_PORT", None)
+
+    sys._excepthook = sys.excepthook 
+    def exception_hook(exctype, value, traceback):
+        print(exctype, value, traceback)
+        sys._excepthook(exctype, value, traceback) 
+        sys.exit(1) 
+    sys.excepthook = exception_hook 
 
     app = QApplication(sys.argv)
     TrackManagerGUI(app, api_host, api_port)
