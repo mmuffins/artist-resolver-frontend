@@ -192,24 +192,24 @@ class TrackManagerGUI(QMainWindow):
         self.track_view = QTreeView(self)
         self.layout.addWidget(self.track_view)
         self.clear_data()
-        
 
     def load_directory(self) -> None:
-        # directory = QFileDialog.getExistingDirectory(self, "Select Directory")
-        # if directory:
-        directory = "C:/Users/email_000/Desktop/music/sample/spiceandwolf"
-        
-        async def load_and_update():
-            self.clear_data()
+        directory = QFileDialog.getExistingDirectory(
+            self, "Select Directory", "C:/Users/email_000/Desktop/music/sample/"
+        )
+        if directory:
 
-            await self.track_manager.load_directory(directory)
-            await self.track_manager.update_artists_info_from_db()
+            async def load_and_update():
+                self.clear_data()
 
-            self.track_model.layoutChanged.emit() 
-            self.track_view.expandAll()  
+                await self.track_manager.load_directory(directory)
+                await self.track_manager.update_artists_info_from_db()
 
-        asyncio.run(load_and_update())
-        print(f"Selected directory: {directory}")
+                self.track_model.layoutChanged.emit()
+                self.track_view.expandAll()
+
+            asyncio.run(load_and_update())
+            print(f"Selected directory: {directory}")
 
     def clear_data(self) -> TrackModel:
         self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
@@ -239,12 +239,14 @@ def main():
     api_host = args.host if args.host else os.getenv("ARTIST_RESOLVER_HOST", None)
     api_port = args.port if args.port else os.getenv("ARTIST_RESOLVER_PORT", None)
 
-    sys._excepthook = sys.excepthook 
+    sys._excepthook = sys.excepthook
+
     def exception_hook(exctype, value, traceback):
         print(exctype, value, traceback)
-        sys._excepthook(exctype, value, traceback) 
-        sys.exit(1) 
-    sys.excepthook = exception_hook 
+        sys._excepthook(exctype, value, traceback)
+        sys.exit(1)
+
+    sys.excepthook = exception_hook
 
     app = QApplication(sys.argv)
     TrackManagerGUI(app, api_host, api_port)
