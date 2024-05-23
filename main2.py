@@ -124,7 +124,7 @@ class TrackModel(QAbstractItemModel):
             if property_name == "artist_string":
                 return track.get_artist_string()
             return getattr(track, property_name, None)
-        
+
         property_name = self.artist_column_mappings[index.column()]["property"]
         track = index.parent().internalPointer()
         artist = track.mbArtistDetails[index.row()]
@@ -132,12 +132,10 @@ class TrackModel(QAbstractItemModel):
         if role == Qt.ItemDataRole.CheckStateRole:
             if property_name == "include":
                 return (
-                    Qt.CheckState.Checked
-                    if artist.include
-                    else Qt.CheckState.Unchecked
+                    Qt.CheckState.Checked if artist.include else Qt.CheckState.Unchecked
                 )
             return None
-        
+
         return getattr(artist, property_name, None)
 
     def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
