@@ -23,6 +23,70 @@ class TrackModel(QAbstractItemModel):
     def __init__(self, track_manager):
         super().__init__()
         self.track_manager = track_manager
+        self.track_column_mappings = [
+            {
+                "property": "file_path",
+                "display_name": "File Path",
+                "width": 100,
+                "editable": False,
+            },
+            {
+                "property": "update_file",
+                "display_name": "Update",
+                "width": 100,
+                "editable": False,
+            },
+            {
+                "property": "title",
+                "display_name": "Track Title",
+                "width": 100,
+                "editable": True,
+            },
+            {
+                "property": "album",
+                "display_name": "Album",
+                "width": 100,
+                "editable": True,
+            },
+            {
+                "property": "artist_string",
+                "display_name": "Artist(s)",
+                "width": 100,
+                "editable": True,
+            },
+        ]
+        self.artist_column_mappings = [
+            {
+                "property": "include",
+                "display_name": "Include",
+                "width": 100,
+                "editable": False,
+            },
+            {
+                "property": "mbid",
+                "display_name": "MBID",
+                "width": 100,
+                "editable": False,
+            },
+            {
+                "property": "type",
+                "display_name": "Type",
+                "width": 100,
+                "editable": False,
+            },
+            {
+                "property": "name",
+                "display_name": "Artist",
+                "width": 100,
+                "editable": False,
+            },
+            {
+                "property": "custom_name",
+                "display_name": "Custom Name",
+                "width": 100,
+                "editable": True,
+            },
+        ]
 
     def rowCount(self, parent=QModelIndex()):
         if not parent.isValid():
@@ -33,34 +97,29 @@ class TrackModel(QAbstractItemModel):
         return 0
 
     def columnCount(self, parent=QModelIndex()):
-        return 5  # Adjust based on number of columns needed
+        if not parent.isValid():
+            return len(self.track_column_mappings)
+        elif parent.internalPointer() in self.track_manager.tracks:
+            return len(self.artist_column_mappings)
+        return 0
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
-        if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
+        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
             if not index.parent().isValid():
                 track = self.track_manager.tracks[index.row()]
                 column = index.column()
-                if column == 0:
-                    return track.title
-                elif column == 1:
-                    return track.album
-                elif column == 2:
+                property_name = self.track_column_mappings[column]["property"]
+                if property_name == "artist_string":
                     return track.get_artist_string()
-                # Add more columns as needed
+                return getattr(track, property_name, None)
             else:
                 track = index.parent().internalPointer()
                 artist = track.mbArtistDetails[index.row()]
-                column = index.column()
-                if column == 0:
-                    return artist.name
-                elif column == 1:
-                    return artist.type
-                elif column == 2:
-                    return artist.custom_name
-                # Add more columns as needed
+                property_name = self.artist_column_mappings[index.column()]["property"]
+                return getattr(artist, property_name, None)
         return None
 
     def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
@@ -71,24 +130,16 @@ class TrackModel(QAbstractItemModel):
             if not index.parent().isValid():
                 track = self.track_manager.tracks[index.row()]
                 column = index.column()
-                if column == 0:
-                    track.title = value
-                elif column == 1:
-                    track.album = value
-                elif column == 2:
+                property_name = self.track_column_mappings[column]["property"]
+                if property_name == "artist_string":
                     track.artist = [value]
-                # Add more columns as needed
+                else:
+                    setattr(track, property_name, value)
             else:
                 track = index.parent().internalPointer()
                 artist = track.mbArtistDetails[index.row()]
-                column = index.column()
-                if column == 0:
-                    artist.name = value
-                elif column == 1:
-                    artist.type = value
-                elif column == 2:
-                    artist.custom_name = value
-                # Add more columns as needed
+                property_name = self.artist_column_mappings[index.column()]["property"]
+                setattr(artist, property_name, value)
             self.dataChanged.emit(index, index, [role])
             return True
         return False
@@ -98,13 +149,11 @@ class TrackModel(QAbstractItemModel):
             orientation == Qt.Orientation.Horizontal
             and role == Qt.ItemDataRole.DisplayRole
         ):
-            if section == 0:
-                return "Title"
-            elif section == 1:
-                return "Album"
-            elif section == 2:
-                return "Artist(s)"
-            # Add more columns as needed
+            if section < len(self.track_column_mappings):
+                return self.track_column_mappings[section]["display_name"]
+            return self.artist_column_mappings[
+                section - len(self.track_column_mappings)
+            ]["display_name"]
         return None
 
     def index(self, row, column, parent=QModelIndex()):
@@ -135,11 +184,19 @@ class TrackModel(QAbstractItemModel):
         if not index.isValid():
             return Qt.ItemFlag.ItemIsEnabled
 
-        return (
-            Qt.ItemFlag.ItemIsEnabled
-            | Qt.ItemFlag.ItemIsSelectable
-            | Qt.ItemFlag.ItemIsEditable
-        )
+        column = index.column()
+        if not index.parent().isValid():
+            editable = self.track_column_mappings[column]["editable"]
+        else:
+            editable = self.artist_column_mappings[column]["editable"]
+
+        if editable:
+            return (
+                Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsSelectable
+                | Qt.ItemFlag.ItemIsEditable
+            )
+        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
 
 class TrackManagerGUI(QMainWindow):
