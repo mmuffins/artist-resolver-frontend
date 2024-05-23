@@ -1,6 +1,9 @@
 import os
 import argparse
 import sys
+import asyncio
+from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex
+from TrackManager import TrackManager
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -9,184 +12,143 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QCheckBox,
     QFileDialog,
+    QLabel,
     QTreeWidget,
     QTreeWidgetItem,
+    QTreeView,
 )
-from PyQt6.QtCore import Qt
-from TrackManager import TrackManager
-import asyncio
+
+
+class TrackModel(QAbstractItemModel):
+    def __init__(self, track_manager):
+        super().__init__()
+        self.track_manager = track_manager
+
+    def rowCount(self, parent=QModelIndex()):
+        if not parent.isValid():
+            return len(self.track_manager.tracks)
+        elif parent.internalPointer() in self.track_manager.tracks:
+            track = parent.internalPointer()
+            return len(track.mbArtistDetails)
+        return 0
+
+    def columnCount(self, parent=QModelIndex()):
+        return 5  # Adjust based on number of columns needed
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+
+        if role == Qt.ItemDataRole.DisplayRole or role == Qt.ItemDataRole.EditRole:
+            if not index.parent().isValid():
+                track = self.track_manager.tracks[index.row()]
+                column = index.column()
+                if column == 0:
+                    return track.title
+                elif column == 1:
+                    return track.album
+                elif column == 2:
+                    return track.get_artist_string()
+                # Add more columns as needed
+            else:
+                track = index.parent().internalPointer()
+                artist = track.mbArtistDetails[index.row()]
+                column = index.column()
+                if column == 0:
+                    return artist.name
+                elif column == 1:
+                    return artist.type
+                elif column == 2:
+                    return artist.custom_name
+                # Add more columns as needed
+        return None
+
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if not index.isValid():
+            return False
+
+        if role == Qt.ItemDataRole.EditRole:
+            if not index.parent().isValid():
+                track = self.track_manager.tracks[index.row()]
+                column = index.column()
+                if column == 0:
+                    track.title = value
+                elif column == 1:
+                    track.album = value
+                elif column == 2:
+                    track.artist = [value]
+                # Add more columns as needed
+            else:
+                track = index.parent().internalPointer()
+                artist = track.mbArtistDetails[index.row()]
+                column = index.column()
+                if column == 0:
+                    artist.name = value
+                elif column == 1:
+                    artist.type = value
+                elif column == 2:
+                    artist.custom_name = value
+                # Add more columns as needed
+            self.dataChanged.emit(index, index, [role])
+            return True
+        return False
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
+            if section == 0:
+                return "Title"
+            elif section == 1:
+                return "Album"
+            elif section == 2:
+                return "Artist(s)"
+            # Add more columns as needed
+        return None
+
+    def index(self, row, column, parent=QModelIndex()):
+        if not parent.isValid():
+            return self.createIndex(row, column, self.track_manager.tracks[row])
+        elif parent.internalPointer() in self.track_manager.tracks:
+            track = parent.internalPointer()
+            return self.createIndex(row, column, track.mbArtistDetails[row])
+        return QModelIndex()
+
+    def parent(self, index):
+        if not index.isValid():
+            return QModelIndex()
+
+        item = index.internalPointer()
+
+        if item in self.track_manager.tracks:
+            return QModelIndex()
+
+        for track in self.track_manager.tracks:
+            if item in track.mbArtistDetails:
+                row = self.track_manager.tracks.index(track)
+                return self.createIndex(row, 0, track)
+
+        return QModelIndex()
+
+    def flags(self, index):
+        if not index.isValid():
+            return Qt.ItemFlag.ItemIsEnabled
+
+        return (
+            Qt.ItemFlag.ItemIsEnabled
+            | Qt.ItemFlag.ItemIsSelectable
+            | Qt.ItemFlag.ItemIsEditable
+        )
+
 
 class TrackManagerGUI(QMainWindow):
-    data_mapping = {
-        "file_path": {
-            "source_object": "track_details",
-            "property": "file_path",
-            "display_name": "File Path",
-            "width": 100,
-            "editable": False,
-            "display": True,
-        },
-        "update_file": {
-            "source_object": "track_details",
-            "property": "update_file",
-            "display_name": "Update",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "title": {
-            "source_object": "track_details",
-            "property": "title",
-            "display_name": "Track Title",
-            "width": 100,
-            "editable": False,
-            "display": True,
-        },
-        "original_title": {
-            "source_object": "track_details",
-            "property": "original_title",
-            "display_name": "Orig Title",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "track_artist": {
-            "source_object": "track_details",
-            "property": "artist",
-            "display_name": "Track Artist",
-            "width": 100,
-            "editable": False,
-            "display": True,
-        },
-        "artist_sort": {
-            "source_object": "mbartist_details",
-            "property": "sort_name",
-            "display_name": "Sort Artist",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "original_artist": {
-            "source_object": "track_details",
-            "property": "original_artist",
-            "display_name": "Orig Artist",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "album": {
-            "source_object": "track_details",
-            "property": "album",
-            "display_name": "Album",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "product": {
-            "source_object": "track_details",
-            "property": "product",
-            "display_name": "Product",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "original_album": {
-            "source_object": "track_details",
-            "property": "original_album",
-            "display_name": "Orig Album",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "album_artist": {
-            "source_object": "track_details",
-            "property": "album_artist",
-            "display_name": "Album Artist",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "grouping": {
-            "source_object": "track_details",
-            "property": "grouping",
-            "display_name": "Grouping",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "mbid": {
-            "source_object": "mbartist_details",
-            "property": "mbid",
-            "display_name": "MBID",
-            "width": 100,
-            "editable": False,
-            "display": True,
-        },
-        "type": {
-            "source_object": "mbartist_details",
-            "property": "type",
-            "display_name": "Type",
-            "width": 85,
-            "editable": False,
-            "display": True,
-        },
-        "artist": {
-            "source_object": "mbartist_details",
-            "property": "name",
-            "display_name": "Artist",
-            "width": 100,
-            "editable": False,
-            "display": True,
-        },
-        "joinphrase": {
-            "source_object": "mbartist_details",
-            "property": "joinphrase",
-            "display_name": "Join Phrase",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "include": {
-            "source_object": "mbartist_details",
-            "property": "include",
-            "display_name": "Include",
-            "width": 30,
-            "editable": True,
-            "display": True,
-        },
-        "custom_name": {
-            "source_object": "mbartist_details",
-            "property": "custom_name",
-            "display_name": "Custom Name",
-            "width": 100,
-            "editable": True,
-            "display": True,
-        },
-        "custom_original_name": {
-            "source_object": "mbartist_details",
-            "property": "custom_original_name",
-            "display_name": "Custom Orig Name",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "updated_from_server": {
-            "source_object": "mbartist_details",
-            "property": "updated_from_server",
-            "display_name": "Has Server Information",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-    }
-
     def __init__(self, app, api_host, api_port):
         super().__init__()
 
         self.api_host = api_host
         self.api_port = api_port
-        self.track_manager = TrackManager(api_host, api_port)
-
+        self.track_manager = TrackManager(host=api_host, port=api_port)
         self.initUI()
         self.show()
 
@@ -223,57 +185,28 @@ class TrackManagerGUI(QMainWindow):
         self.layout.addWidget(self.btn_save)
 
         self.btn_load_files = QPushButton("Select Folder", self)
-        self.btn_load_files.clicked.connect(self.handle_load_files_click)
+        self.btn_load_files.clicked.connect(self.load_directory)
         self.layout.addWidget(self.btn_load_files)
 
-        # Placeholder for the table
-        self.track_table = QTreeWidget()
-        self.track_table.setHeaderLabels(
-            [value["display_name"] for value in self.data_mapping.values() if value["display"]]
-        )
-        self.track_table.setColumnCount(len([value for value in self.data_mapping.values() if value["display"]]))
-        self.layout.addWidget(self.track_table)
+        self.track_view = QTreeView(self)
+        self.layout.addWidget(self.track_view)
+        self.track_model = TrackModel(self.track_manager)
+        self.track_view.setModel(self.track_model)
 
-    def handle_load_files_click(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.load_directory())
+    def load_directory(self):
+        directory = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if directory:
+            self.track_manager.tracks = []  # Reset track list
+            self.track_manager.artist_data = {}  # Reset artist data
 
-    async def load_directory(self):
-        # directory = QFileDialog.getExistingDirectory(self, "Select Directory")
-        # if directory:
-        directory = "C:/Users/email_000/Desktop/music/sample/spiceandwolf"
-        await self.track_manager.load_directory(directory)
-        await self.track_manager.update_artists_info_from_db()
-        self.populate_table()
+            async def load_and_update():
+                await self.track_manager.load_directory(directory)
+                await self.track_manager.update_artists_info_from_db()
+                self.track_model.layoutChanged.emit()  # Refresh the view
 
-    def populate_table(self):
-        self.track_table.clear()
-        for track in self.track_manager.tracks:
-            track_item = QTreeWidgetItem()
-            track_item.setText(0, track.title)
-            self.track_table.addTopLevelItem(track_item)
-            for artist in track.mbArtistDetails:
-                artist_item = QTreeWidgetItem()
-                for col, key in enumerate(self.data_mapping.keys()):
-                    mapping = self.data_mapping[key]
-                    if mapping["display"]:
-                        if mapping["source_object"] == "track_details":
-                            value = getattr(track, mapping["property"])
-                        elif mapping["source_object"] == "mbartist_details":
-                            value = getattr(artist, mapping["property"])
-                        else:
-                            value = ""
-                        if isinstance(value, list):
-                            value = ", ".join(value)
-                        artist_item.setText(col, str(value) if value else "")
-                track_item.addChild(artist_item)
+            asyncio.run(load_and_update())
+            print(f"Selected directory: {directory}")
 
-    def create_track_manager(self) -> TrackManager:
-        try:
-            return TrackManager(self.api_host, self.api_port)
-        except Exception as e:
-            print(f"EXCEPTION: {e}")
 
 def main():
     parser = argparse.ArgumentParser(prog="Artist Relation Resolver")
@@ -298,7 +231,8 @@ def main():
     api_port = args.port if args.port else os.getenv("ARTIST_RESOLVER_PORT", None)
 
     app = QApplication(sys.argv)
-    gui = TrackManagerGUI(app, api_host, api_port)
+    TrackManagerGUI(app, api_host, api_port)
+
 
 if __name__ == "__main__":
     main()
