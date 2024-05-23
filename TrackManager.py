@@ -547,6 +547,14 @@ class TrackManager:
         self.api_host = host if host is not None else self.API_DOMAIN
         self.api_port = port if port is not None else self.API_PORT
 
+    def clear_data(self) -> None:
+        """
+        Removes all data from the class instance
+        """
+
+        self.tracks: list[TrackDetails] = []
+        self.artist_data: dict[MbArtistDetails] = {}
+
     async def load_directory(self, directory: str) -> None:
         """
         Gets all mp3 files in a directory and reads their id3 tags
