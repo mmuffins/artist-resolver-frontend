@@ -226,7 +226,7 @@ class TrackModel(QAbstractItemModel):
         return flags
 
 
-class TrackManagerGUI(QMainWindow):
+class MainWindow(QMainWindow):
     def __init__(self, app, api_host, api_port):
         super().__init__()
 
@@ -333,7 +333,7 @@ def main():
     sys.excepthook = exception_hook
 
     app = QApplication(sys.argv)
-    TrackManagerGUI(app, api_host, api_port)
+    MainWindow(app, api_host, api_port)
 
 
 if __name__ == "__main__":
