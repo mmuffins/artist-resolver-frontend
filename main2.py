@@ -60,7 +60,7 @@ class TrackModel(QAbstractItemModel):
                 "property": "include",
                 "display_name": "Include",
                 "width": 100,
-                "editable": False,
+                "editable": True,
             },
             {
                 "property": "mbid",
@@ -107,26 +107,44 @@ class TrackModel(QAbstractItemModel):
         if not index.isValid():
             return None
 
-        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole):
-            if not index.parent().isValid():
-                track = self.track_manager.tracks[index.row()]
-                column = index.column()
-                property_name = self.track_column_mappings[column]["property"]
-                if property_name == "artist_string":
-                    return track.get_artist_string()
-                return getattr(track, property_name, None)
-            else:
-                track = index.parent().internalPointer()
-                artist = track.mbArtistDetails[index.row()]
-                property_name = self.artist_column_mappings[index.column()]["property"]
-                return getattr(artist, property_name, None)
-        return None
+        if role not in (
+            Qt.ItemDataRole.DisplayRole,
+            Qt.ItemDataRole.EditRole,
+            Qt.ItemDataRole.CheckStateRole,
+        ):
+            return None
+
+        if not index.parent().isValid():
+            if role == Qt.ItemDataRole.CheckStateRole:
+                return None
+
+            track = self.track_manager.tracks[index.row()]
+            column = index.column()
+            property_name = self.track_column_mappings[column]["property"]
+            if property_name == "artist_string":
+                return track.get_artist_string()
+            return getattr(track, property_name, None)
+        
+        property_name = self.artist_column_mappings[index.column()]["property"]
+        track = index.parent().internalPointer()
+        artist = track.mbArtistDetails[index.row()]
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            if property_name == "include":
+                return (
+                    Qt.CheckState.Checked
+                    if artist.include
+                    else Qt.CheckState.Unchecked
+                )
+            return None
+        
+        return getattr(artist, property_name, None)
 
     def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
         if not index.isValid():
             return False
 
-        if role == Qt.ItemDataRole.EditRole:
+        if role == Qt.ItemDataRole.EditRole or role == Qt.ItemDataRole.CheckStateRole:
             if not index.parent().isValid():
                 track = self.track_manager.tracks[index.row()]
                 column = index.column()
@@ -139,7 +157,15 @@ class TrackModel(QAbstractItemModel):
                 track = index.parent().internalPointer()
                 artist = track.mbArtistDetails[index.row()]
                 property_name = self.artist_column_mappings[index.column()]["property"]
-                setattr(artist, property_name, value)
+
+                if (
+                    property_name == "include"
+                    and role == Qt.ItemDataRole.CheckStateRole
+                ):
+                    artist.include = value == Qt.CheckState.Checked
+                else:
+                    setattr(artist, property_name, value)
+
             self.dataChanged.emit(index, index, [role])
             return True
         return False
@@ -190,13 +216,16 @@ class TrackModel(QAbstractItemModel):
         else:
             editable = self.artist_column_mappings[column]["editable"]
 
+        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         if editable:
-            return (
-                Qt.ItemFlag.ItemIsEnabled
-                | Qt.ItemFlag.ItemIsSelectable
-                | Qt.ItemFlag.ItemIsEditable
-            )
-        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+            flags |= Qt.ItemFlag.ItemIsEditable
+            if (
+                index.parent().isValid()
+                and self.artist_column_mappings[column]["property"] == "include"
+            ):
+                flags |= Qt.ItemFlag.ItemIsUserCheckable
+
+        return flags
 
 
 class TrackManagerGUI(QMainWindow):
