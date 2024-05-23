@@ -2,8 +2,8 @@ import os
 import argparse
 import sys
 import asyncio
-from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex
-from TrackManager import TrackManager
+from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, pyqtSlot
+from TrackManager import TrackManager, TrackDetails
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -23,6 +23,7 @@ class TrackModel(QAbstractItemModel):
     def __init__(self, track_manager):
         super().__init__()
         self.track_manager = track_manager
+        self.layoutChanged.connect(self.custom_layout_changed)
         self.track_column_mappings = [
             {
                 "property": "file_path",
@@ -88,20 +89,22 @@ class TrackModel(QAbstractItemModel):
             },
         ]
 
-    def rowCount(self, parent=QModelIndex()):
-        if not parent.isValid():
-            return len(self.track_manager.tracks)
-        elif parent.internalPointer() in self.track_manager.tracks:
-            track = parent.internalPointer()
-            return len(track.mbArtistDetails)
-        return 0
+    @pyqtSlot()
+    def custom_layout_changed(self):
+        self.create_unique_artist_index()
 
-    def columnCount(self, parent=QModelIndex()):
-        if not parent.isValid():
-            return len(self.track_column_mappings)
-        elif parent.internalPointer() in self.track_manager.tracks:
-            return len(self.artist_column_mappings)
-        return 0
+    def create_unique_artist_index(self):
+        self.track_index = []
+        for track in self.track_manager.tracks:
+            for artist in track.mbArtistDetails:
+                self.track_index.append({"track":track,"artist":artist})
+
+    def get_unique_artist(self, track, artist):
+        for index, track_info in enumerate(self.track_index):
+            if track_info['track'] == track and track_info['artist'] == artist:
+                return index, track_info
+        return None, None
+
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
@@ -182,10 +185,15 @@ class TrackModel(QAbstractItemModel):
 
     def index(self, row, column, parent=QModelIndex()):
         if not parent.isValid():
-            return self.createIndex(row, column, self.track_manager.tracks[row])
-        elif parent.internalPointer() in self.track_manager.tracks:
+            if row < len(self.track_manager.tracks):
+                return self.createIndex(row, column, self.track_manager.tracks[row])
+            return QModelIndex()
+        else:
             track = parent.internalPointer()
-            return self.createIndex(row, column, track.mbArtistDetails[row])
+            if row < len(track.mbArtistDetails):
+                _, track_info = self.get_unique_artist(track, track.mbArtistDetails[row])
+                if track_info:
+                    return self.createIndex(row, column, track_info)
         return QModelIndex()
 
     def parent(self, index):
@@ -194,15 +202,27 @@ class TrackModel(QAbstractItemModel):
 
         item = index.internalPointer()
 
-        if item in self.track_manager.tracks:
-            return QModelIndex()
-
-        for track in self.track_manager.tracks:
-            if item in track.mbArtistDetails:
-                row = self.track_manager.tracks.index(track)
-                return self.createIndex(row, 0, track)
+        if isinstance(item, dict):  # It's a track-artist mapping
+            track = item['track']
+            row = self.track_manager.tracks.index(track)
+            return self.createIndex(row, 0, track)
 
         return QModelIndex()
+
+    def rowCount(self, parent=QModelIndex()):
+        if not parent.isValid():
+            return len(self.track_manager.tracks)
+        else:
+            track = parent.internalPointer()
+            if isinstance(track, TrackDetails):
+                return len(track.mbArtistDetails)
+        return 0
+
+    def columnCount(self, parent=QModelIndex()):
+        if not parent.isValid():
+            return len(self.track_column_mappings)
+        else:
+            return len(self.artist_column_mappings)
 
     def flags(self, index):
         if not index.isValid():
