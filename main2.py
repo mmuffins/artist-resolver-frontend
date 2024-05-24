@@ -2,7 +2,7 @@ import os
 import argparse
 import sys
 import asyncio
-from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, pyqtSlot
+from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex
 from TrackManager import TrackManager, TrackDetails
 from PyQt6.QtWidgets import (
     QApplication,
@@ -12,9 +12,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QCheckBox,
     QFileDialog,
-    QLabel,
-    QTreeWidget,
-    QTreeWidgetItem,
     QTreeView,
 )
 
@@ -23,69 +20,98 @@ class TrackModel(QAbstractItemModel):
     def __init__(self, track_manager):
         super().__init__()
         self.track_manager = track_manager
-        self.layoutChanged.connect(self.custom_layout_changed)
         self.track_column_mappings = [
             {
                 "property": "file_path",
                 "display_name": "File Path",
                 "width": 100,
                 "editable": False,
+                "roles": [],
             },
             {
                 "property": "update_file",
                 "display_name": "Update",
                 "width": 100,
                 "editable": False,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                ],
             },
             {
                 "property": "title",
                 "display_name": "Track Title",
                 "width": 100,
                 "editable": True,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                    Qt.ItemDataRole.EditRole,
+                ],
             },
             {
                 "property": "album",
                 "display_name": "Album",
                 "width": 100,
                 "editable": True,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                ],
             },
             {
                 "property": "artist_string",
                 "display_name": "Artist(s)",
                 "width": 100,
                 "editable": True,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                ],
             },
         ]
         self.artist_column_mappings = [
-            {
-                "property": "include",
-                "display_name": "Include",
-                "width": 100,
-                "editable": True,
-            },
             {
                 "property": "mbid",
                 "display_name": "MBID",
                 "width": 100,
                 "editable": False,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                ],
             },
             {
                 "property": "type",
                 "display_name": "Type",
                 "width": 100,
                 "editable": False,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                ],
             },
             {
                 "property": "name",
                 "display_name": "Artist",
                 "width": 100,
                 "editable": False,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                ],
+            },
+            {
+                "property": "include",
+                "display_name": "Include",
+                "width": 100,
+                "editable": True,
+                "roles": [
+                    Qt.ItemDataRole.CheckStateRole,
+                ],
             },
             {
                 "property": "custom_name",
                 "display_name": "Custom Name",
                 "width": 100,
                 "editable": True,
+                "roles": [
+                    Qt.ItemDataRole.DisplayRole,
+                    Qt.ItemDataRole.EditRole,
+                ],
             },
         ]
 
@@ -105,10 +131,6 @@ class TrackModel(QAbstractItemModel):
             return len(self.track_column_mappings)
         else:
             return len(self.artist_column_mappings)
-
-    @pyqtSlot()
-    def custom_layout_changed(self):
-        self.create_unique_artist_index()
 
     def create_unique_artist_index(self):
         """
@@ -146,13 +168,6 @@ class TrackModel(QAbstractItemModel):
         if not index.isValid():
             return None
 
-        if role not in (
-            Qt.ItemDataRole.DisplayRole,
-            Qt.ItemDataRole.EditRole,
-            Qt.ItemDataRole.CheckStateRole,
-        ):
-            return None
-
         if not index.parent().isValid():
             # items without parents are track objects
             return self.data_track(index, role)
@@ -161,30 +176,37 @@ class TrackModel(QAbstractItemModel):
         return self.data_artist(index, role)
 
     def data_track(self, index, role=Qt.ItemDataRole.DisplayRole):
-        if role == Qt.ItemDataRole.CheckStateRole:
-            return None
-
         track = self.track_manager.tracks[index.row()]
         column = index.column()
-        property_name = self.track_column_mappings[column]["property"]
+        column_mapping = self.track_column_mappings[column]
 
-        if property_name == "artist_string":
-            return track.get_artist_string()
-        return getattr(track, property_name, None)
+        if role not in column_mapping["roles"]:
+            return None
+
+        value = getattr(track, column_mapping["property"], None)
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            value = Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
+
+        if column_mapping["property"] == "artist_string":
+            value = track.get_artist_string()
+
+        return value
 
     def data_artist(self, index, role=Qt.ItemDataRole.DisplayRole):
         track = index.parent().internalPointer()
         artist = track.mbArtistDetails[index.row()]
-        property_name = self.artist_column_mappings[index.column()]["property"]
+        column_mapping = self.artist_column_mappings[index.column()]
 
-        if role == Qt.ItemDataRole.CheckStateRole:
-            if property_name == "include":
-                return (
-                    Qt.CheckState.Checked if artist.include else Qt.CheckState.Unchecked
-                )
+        if role not in column_mapping["roles"]:
             return None
 
-        return getattr(artist, property_name, None)
+        value = getattr(artist, column_mapping["property"], None)
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            value = Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
+
+        return value
 
     def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
         """Writes data back to the underlying data object once an item was modified"""
@@ -209,13 +231,15 @@ class TrackModel(QAbstractItemModel):
             return False
 
         track = self.track_manager.tracks[index.row()]
-        column = index.column()
-        property_name = self.track_column_mappings[column]["property"]
+        column_mapping = self.track_column_mappings[index.column()]
 
-        if property_name == "artist_string":
+        if role not in column_mapping["roles"]:
+            return False
+
+        if column_mapping["property"] == "artist_string":
             track.artist = [value]
         else:
-            setattr(track, property_name, value)
+            setattr(track, column_mapping["property"], value)
 
         return True
 
@@ -355,7 +379,6 @@ class MainWindow(QMainWindow):
                 await self.track_manager.update_artists_info_from_db()
 
                 self.track_model.create_unique_artist_index()
-                self.track_model.layoutChanged.emit()
                 self.track_view.expandAll()
 
             asyncio.run(load_and_update())
