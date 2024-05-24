@@ -396,7 +396,7 @@ class MainWindow(QMainWindow):
         self.clear_data()
 
     def save_changes(self) -> None:
-        async def runX():
+        async def run():
             try:
                 await self.track_manager.send_changes_to_db()
             except Exception as e:
@@ -407,7 +407,7 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 print(f"{e}")
 
-        asyncio.run(runX())
+        asyncio.run(run())
 
     def load_directory(self) -> None:
         directory = QFileDialog.getExistingDirectory(
