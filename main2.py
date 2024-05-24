@@ -97,14 +97,13 @@ class TrackModel(QAbstractItemModel):
         self.track_index = []
         for track in self.track_manager.tracks:
             for artist in track.mbArtistDetails:
-                self.track_index.append({"track":track,"artist":artist})
+                self.track_index.append({"track": track, "artist": artist})
 
     def get_unique_artist(self, track, artist):
         for index, track_info in enumerate(self.track_index):
-            if track_info['track'] == track and track_info['artist'] == artist:
+            if track_info["track"] == track and track_info["artist"] == artist:
                 return index, track_info
         return None, None
-
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
@@ -191,7 +190,9 @@ class TrackModel(QAbstractItemModel):
         else:
             track = parent.internalPointer()
             if row < len(track.mbArtistDetails):
-                _, track_info = self.get_unique_artist(track, track.mbArtistDetails[row])
+                _, track_info = self.get_unique_artist(
+                    track, track.mbArtistDetails[row]
+                )
                 if track_info:
                     return self.createIndex(row, column, track_info)
         return QModelIndex()
@@ -203,7 +204,7 @@ class TrackModel(QAbstractItemModel):
         item = index.internalPointer()
 
         if isinstance(item, dict):  # It's a track-artist mapping
-            track = item['track']
+            track = item["track"]
             row = self.track_manager.tracks.index(track)
             return self.createIndex(row, 0, track)
 
@@ -299,7 +300,9 @@ class MainWindow(QMainWindow):
 
     def load_directory(self) -> None:
         directory = QFileDialog.getExistingDirectory(
-            self, "Select Directory", "C:/Users/email_000/Desktop/music/sample/spiceandwolf"
+            self,
+            "Select Directory",
+            "C:/Users/email_000/Desktop/music/sample/spiceandwolf",
         )
         if directory:
 
