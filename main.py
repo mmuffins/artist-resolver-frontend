@@ -362,24 +362,38 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(
             """
             QPushButton {
-                min-width: 80px;
+                min-width: 85px;
                 min-height: 25px;
                 font-size: 16px;
+                background-color: rgb(62, 62, 64);
+            }
+            QPushButton:hover {
+                border : solid rgb(8, 114, 186);
+                border-width: 1px 1px 1px 1px;
+                background-color: rgb(62, 62, 64);
+                color: rgb(8, 114, 186);
             }
             QTreeView {
                 border : solid red;
-                border-width:  0px 0px 0px 0px;
+                border-width: 0px 0px 0px 0px;
                 font-size: 16px;
             }
             QHeaderView::section {
                 background-color: rgb(51, 51, 55);
             }
             QTreeView::item {
-                margin: 4px 0px;
+                margin: 0px 0px;
+                min-height: 30px;
             }
             QTreeView::indicator {
                 width: 20px;
                 height: 20px;
+            }
+            QTreeView::item:selected {
+                background-color: rgb(38, 79, 120);
+            }
+            QTreeView::item:hover {
+                background-color: rgb(62, 62, 66);
             }
             QMainWindow {
                 background-color: rgb(30, 30, 30);
