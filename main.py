@@ -137,7 +137,6 @@ class TrackModel(QAbstractItemModel):
         },
     ]
 
-
     def __init__(self, track_manager):
         super().__init__()
         self.track_manager = track_manager
@@ -185,11 +184,14 @@ class TrackModel(QAbstractItemModel):
 
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
         """Returns a string to be displayed in the header of a column"""
-        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
             if section < len(self.header_names):
                 return self.header_names[section]["display_name"]
         return None
-    
+
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         """Returns data requested by an item from the underlying data object"""
         if not index.isValid():
@@ -361,6 +363,7 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(self.layout)
 
         self.cb_replace_original_title = QCheckBox("Replace original title", self)
+        self.cb_replace_original_title.setChecked(True)
         self.layout.addWidget(self.cb_replace_original_title)
 
         self.cb_overwrite_existing_original_title = QCheckBox(
@@ -369,6 +372,7 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.cb_overwrite_existing_original_title)
 
         self.cb_replace_original_artist = QCheckBox("Replace original artists", self)
+        self.cb_replace_original_artist.setChecked(True)
         self.layout.addWidget(self.cb_replace_original_artist)
 
         self.cb_overwrite_existing_original_artist = QCheckBox(
@@ -388,7 +392,6 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.track_view)
         self.clear_data()
         self.apply_column_width()
-
 
     def save_changes(self) -> None:
         async def run():
@@ -417,6 +420,16 @@ class MainWindow(QMainWindow):
 
                 await self.track_manager.load_directory(directory)
                 await self.track_manager.update_artists_info_from_db()
+
+                if self.cb_replace_original_title.isChecked():
+                    self.track_manager.replace_original_title(
+                        overwrite=self.cb_overwrite_existing_original_title.isChecked()
+                    )
+
+                if self.cb_replace_original_artist.isChecked():
+                    self.track_manager.replace_original_artist(
+                        overwrite=self.cb_overwrite_existing_original_artist.isChecked()
+                    )
 
                 self.track_model.create_unique_artist_index()
                 self.track_view.expandAll()
