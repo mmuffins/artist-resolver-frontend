@@ -22,7 +22,7 @@
       "name": "Run gui",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/main.py",
+      "program": "${workspaceFolder}/main_old.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "args": [
@@ -34,7 +34,7 @@
       "name": "PyQt",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/main2.py",
+      "program": "${workspaceFolder}/main.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "args": [
