@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QTreeView,
+    QHBoxLayout,
+    QGridLayout,
 )
 
 
@@ -368,36 +370,66 @@ class MainWindow(QMainWindow):
         self.layout = QVBoxLayout()
         central_widget.setLayout(self.layout)
 
+        self.track_view = QTreeView(self)
+        self.layout.addWidget(self.track_view)
+
+        self.add_bottom_layout()
+
+        self.clear_data()
+        self.apply_column_width()
+
+    def add_bottom_layout(self):
+        # Bottom layout for checkboxes and buttons
+        bottom_layout = QHBoxLayout()
+
+        checkboxes_layout = self.create_checkboxes_layout()
+        bottom_layout.addLayout(checkboxes_layout)
+
+        buttons_layout = self.create_buttons_layout()
+        bottom_layout.addStretch(1)
+        bottom_layout.addLayout(buttons_layout)
+
+        self.layout.addLayout(bottom_layout)
+
+    def create_checkboxes_layout(self):
+        checkboxes_layout = QGridLayout()
+
         self.cb_replace_original_title = QCheckBox("Replace original title", self)
         self.cb_replace_original_title.setChecked(True)
-        self.layout.addWidget(self.cb_replace_original_title)
+        checkboxes_layout.addWidget(self.cb_replace_original_title, 0, 0)
 
         self.cb_overwrite_existing_original_title = QCheckBox(
             "Overwrite existing values", self
         )
-        self.layout.addWidget(self.cb_overwrite_existing_original_title)
+        checkboxes_layout.addWidget(self.cb_overwrite_existing_original_title, 1, 0)
 
         self.cb_replace_original_artist = QCheckBox("Replace original artists", self)
         self.cb_replace_original_artist.setChecked(True)
-        self.layout.addWidget(self.cb_replace_original_artist)
+        checkboxes_layout.addWidget(self.cb_replace_original_artist, 0, 1)
 
         self.cb_overwrite_existing_original_artist = QCheckBox(
             "Overwrite existing values", self
         )
-        self.layout.addWidget(self.cb_overwrite_existing_original_artist)
+        checkboxes_layout.addWidget(self.cb_overwrite_existing_original_artist, 1, 1)
+
+        return checkboxes_layout
+
+    def create_buttons_layout(self):
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(20)  # Increase horizontal spacing between buttons
+        buttons_layout.setContentsMargins(
+            0, 10, 0, 0
+        )  # Add top margin to move buttons up
 
         self.btn_save = QPushButton("Save", self)
         self.btn_save.clicked.connect(self.save_changes)
-        self.layout.addWidget(self.btn_save)
+        buttons_layout.addWidget(self.btn_save)
 
         self.btn_load_files = QPushButton("Select Folder", self)
         self.btn_load_files.clicked.connect(self.load_directory)
-        self.layout.addWidget(self.btn_load_files)
+        buttons_layout.addWidget(self.btn_load_files)
 
-        self.track_view = QTreeView(self)
-        self.layout.addWidget(self.track_view)
-        self.clear_data()
-        self.apply_column_width()
+        return buttons_layout
 
     def create_track_manager(self) -> TrackManager:
         try:
