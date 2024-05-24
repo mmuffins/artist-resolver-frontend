@@ -5,12 +5,7 @@ import asyncio
 import httpx
 from Toast import Toast, ToastType
 from TrackManager import TrackManager, TrackDetails
-from PyQt6.QtCore import (
-    Qt,
-    QAbstractItemModel,
-    QModelIndex,
-    QTimer
-)
+from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -341,6 +336,8 @@ class MainWindow(QMainWindow):
     def __init__(self, app, api_host, api_port):
         super().__init__()
 
+        self.app = app
+        self.is_closing = False
         self.api_host = api_host
         self.api_port = api_port
         self.track_manager = self.create_track_manager()
@@ -413,8 +410,9 @@ class MainWindow(QMainWindow):
 
     def run_async_tasks(self):
         """Runs pending asyncio tasks."""
-        self.loop.stop()
-        self.loop.run_forever()
+        if not self.is_closing:
+            self.loop.stop()
+            self.loop.run_forever()
 
     async def check_server_health(self):
         try:
@@ -535,6 +533,14 @@ class MainWindow(QMainWindow):
         if self.toast and self.toast.isVisible():
             self.toast.update_position(self.geometry())
 
+    def closeEvent(self, event):
+        """Handle the window close event to stop the asyncio event loop and exit the application."""
+        self.is_closing = True
+        self.timer.stop()
+        self.loop.stop()
+        self.loop.close()
+        self.app.quit()
+
 
 def main():
     parser = argparse.ArgumentParser(prog="Artist Relation Resolver")
@@ -568,8 +574,12 @@ def main():
     sys.excepthook = exception_hook
 
     app = QApplication(sys.argv)
-    main_window =  MainWindow(app, api_host, api_port)
-    main_window.loop.run_forever()
+    main_window = MainWindow(app, api_host, api_port)
+
+    try:
+        main_window.loop.run_forever()
+    except RuntimeError as e:
+        print(f"Caught RuntimeError when the loop was closed: {e}")
 
 
 if __name__ == "__main__":
