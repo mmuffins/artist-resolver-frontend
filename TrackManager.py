@@ -92,7 +92,7 @@ class MbArtistDetails:
 
     def __repr__(self):
         return f"{self.name}"
-    
+
     @property
     def formatted_artist(self) -> str:
         """
@@ -581,7 +581,11 @@ class TrackManager:
                 referenced_artist_mbids.add(artist.mbid)
 
         # Remove artists from artist_data if they are no longer referenced by any tracks
-        self.artist_data = {mbid: artist for mbid, artist in self.artist_data.items() if mbid in referenced_artist_mbids}
+        self.artist_data = {
+            mbid: artist
+            for mbid, artist in self.artist_data.items()
+            if mbid in referenced_artist_mbids
+        }
 
         # Remove track references from the track manager
         track.manager = None
@@ -751,8 +755,9 @@ class TrackManager:
 
         if (
             existing_artist["include"] != artist.include
-                or existing_artist["name"] != artist.custom_name
-                or existing_artist["originalName"] != artist.custom_original_name):
+            or existing_artist["name"] != artist.custom_name
+            or existing_artist["originalName"] != artist.custom_original_name
+        ):
             # artist with the current MBID was found in DB, but details were changed, update DB artist
             await self.update_mbartist(existing_artist["id"], artist)
 
@@ -1123,9 +1128,12 @@ class TrackManager:
         endpoint = f"http://{self.api_host}:{self.api_port}/health"
 
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{endpoint}")
-            if response.status_code == 200:
-                return True
+            try:
+                response = await client.get(f"{endpoint}")
+                if response.status_code == 200:
+                    return True
+            except Exception:
+                return False
 
             return False
 

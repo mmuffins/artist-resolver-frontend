@@ -2,9 +2,15 @@ import os
 import argparse
 import sys
 import asyncio
-from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex
-from PyQt6.QtGui import QKeyEvent
+import httpx
+from Toast import Toast, ToastType
 from TrackManager import TrackManager, TrackDetails
+from PyQt6.QtCore import (
+    Qt,
+    QAbstractItemModel,
+    QModelIndex,
+)
+from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -336,14 +342,16 @@ class MainWindow(QMainWindow):
 
         self.api_host = api_host
         self.api_port = api_port
-        self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
+        self.track_manager = self.create_track_manager()
 
         self.initUI()
         self.show()
+        # self.check_server_health()
 
         app.exec()
 
     def initUI(self) -> None:
+        self.toast = None
         self.setWindowTitle("Track Manager")
         self.setGeometry(100, 100, 1000, 600)
 
@@ -384,17 +392,53 @@ class MainWindow(QMainWindow):
         self.clear_data()
         self.apply_column_width()
 
+    def create_track_manager(self) -> TrackManager:
+        try:
+            return TrackManager(self.api_host, self.api_port)
+        except Exception as e:
+            self.show_toast(
+                f"Failed to create a TrackManager object: {str(e)}", ToastType.ERROR
+            )
+            return None
+
+    async def check_server_health(self):
+        try:
+            api_is_healthy = await self.track_manager.get_server_health()
+
+            if not api_is_healthy:
+                self.show_toast(
+                    f"The server is not healthy. Please check the server status.",
+                    ToastType.ERROR,
+                )
+        except httpx.RequestError as e:
+            self.show_toast(
+                f"Could not reach the server at {self.api_host}:{self.api_port}: {str(e)}",
+                ToastType.ERROR,
+            )
+        except Exception as e:
+            self.show_toast(
+                f"An unexpected error occurred when trying to contact the server: {str(e)}",
+                ToastType.ERROR,
+            )
+
     def save_changes(self) -> None:
         async def run():
             try:
                 await self.track_manager.send_changes_to_db()
             except Exception as e:
-                print(f"{e}")
+                self.show_toast(
+                    f"An error occurred when sending update data to the server: {str(e)}",
+                    ToastType.ERROR,
+                )
 
             try:
                 await self.track_manager.save_files()
+                self.show_toast("Metadata saved successfully!", ToastType.SUCCESS)
             except Exception as e:
-                print(f"{e}")
+                self.show_toast(
+                    f"An error occurred when updating the files: {str(e)}",
+                    ToastType.ERROR,
+                )
 
         asyncio.run(run())
 
@@ -408,9 +452,22 @@ class MainWindow(QMainWindow):
 
             async def load_and_update():
                 self.clear_data()
+                await self.check_server_health()
 
-                await self.track_manager.load_directory(directory)
-                await self.track_manager.update_artists_info_from_db()
+                try:
+                    await self.track_manager.load_directory(directory)
+                except Exception as e:
+                    self.show_toast(
+                        f"An error occurred when reading directory {directory}: {str(e)}",
+                        ToastType.ERROR,
+                    )
+                try:
+                    await self.track_manager.update_artists_info_from_db()
+                except Exception as e:
+                    self.show_toast(
+                        f"An error occurred querying the server for information: {str(e)}",
+                        ToastType.ERROR,
+                    )
 
                 if self.cb_replace_original_title.isChecked():
                     self.track_manager.replace_original_title(
@@ -426,12 +483,19 @@ class MainWindow(QMainWindow):
                 self.track_view.expandAll()
 
             asyncio.run(load_and_update())
-            print(f"Selected directory: {directory}")
 
     def clear_data(self) -> TrackModel:
         self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
         self.track_model = TrackModel(self.track_manager)
         self.track_view.setModel(self.track_model)
+
+    def show_toast(self, message: str, toast_type: ToastType) -> None:
+        if self.toast and self.toast.isVisible():
+            self.toast.hide()
+
+        self.toast = Toast(message, toast_type=toast_type, parent=self)
+        self.toast.update_position(self.geometry())
+        self.toast.show()
 
     def apply_column_width(self) -> None:
         for i in range(len(self.track_model.header_names)):
@@ -447,6 +511,14 @@ class MainWindow(QMainWindow):
                     if isinstance(track_item, TrackDetails):
                         self.track_manager.remove_track(track_item)
                         self.track_model.layoutChanged.emit()
+
+    def moveEvent(self, event):
+        if self.toast and self.toast.isVisible():
+            self.toast.update_position(self.geometry())
+
+    def resizeEvent(self, event):
+        if self.toast and self.toast.isVisible():
+            self.toast.update_position(self.geometry())
 
 
 def main():
