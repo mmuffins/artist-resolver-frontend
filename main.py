@@ -360,9 +360,10 @@ class MainWindow(QMainWindow):
         app.exec()
 
     def initUI(self) -> None:
+        self.app.setStyle('Fusion')
         self.toast = None
         self.setWindowTitle("Track Manager")
-        self.setGeometry(100, 100, 1000, 600)
+        self.setGeometry(100, 100, 700, 400)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -607,6 +608,7 @@ def main():
 
     app = QApplication(sys.argv)
     main_window = MainWindow(app, api_host, api_port)
+    
 
     try:
         main_window.loop.run_forever()
