@@ -20,16 +20,26 @@ from PyQt6.QtWidgets import (
 class TrackModel(QAbstractItemModel):
 
     header_names = [
-        {"display_name": "ID", "width": 100},
-        {"display_name": "Type", "width": 100},
-        {"display_name": "Name", "width": 100},
-        {"display_name": "Set", "width": 20},
-        {"display_name": "Custom Name", "width": 100},
+        {"display_name": "ID", "width": 120},
+        {"display_name": "Type", "width": 80},
+        {"display_name": "Name", "width": 150},
+        {"display_name": "Set", "width": 15},
+        {"display_name": "Custom Name", "width": 200},
     ]
 
     track_column_mappings = [
         {
             "property": "title",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "album",
             "roles": [
                 Qt.ItemDataRole.DisplayRole,
             ],
@@ -49,18 +59,8 @@ class TrackModel(QAbstractItemModel):
             ],
         },
         {
-            "property": "update_file",
+            "property": None,
             "roles": [],
-            "flags": [
-                Qt.ItemFlag.ItemIsEnabled,
-                Qt.ItemFlag.ItemIsSelectable,
-            ],
-        },
-        {
-            "property": "album",
-            "roles": [
-                Qt.ItemDataRole.DisplayRole,
-            ],
             "flags": [
                 Qt.ItemFlag.ItemIsEnabled,
                 Qt.ItemFlag.ItemIsSelectable,
