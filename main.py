@@ -371,7 +371,7 @@ class MainWindow(QMainWindow):
                 border : solid rgb(8, 114, 186);
                 border-width: 1px 1px 1px 1px;
                 background-color: rgb(62, 62, 64);
-                color: rgb(8, 114, 186);
+                color: rgb(38, 144, 216);
             }
             QTreeView {
                 border : solid red;
