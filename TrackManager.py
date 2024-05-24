@@ -1127,7 +1127,7 @@ class TrackManager:
 
         endpoint = f"http://{self.api_host}:{self.api_port}/health"
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=1) as client:
             try:
                 response = await client.get(f"{endpoint}")
                 if response.status_code == 200:

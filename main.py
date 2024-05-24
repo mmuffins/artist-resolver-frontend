@@ -9,6 +9,7 @@ from PyQt6.QtCore import (
     Qt,
     QAbstractItemModel,
     QModelIndex,
+    QTimer
 )
 from PyQt6.QtGui import QKeyEvent
 from PyQt6.QtWidgets import (
@@ -344,6 +345,15 @@ class MainWindow(QMainWindow):
         self.api_port = api_port
         self.track_manager = self.create_track_manager()
 
+        # Create and start the asyncio event loop
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        # Use QTimer to periodically run the event loop
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.run_async_tasks)
+        self.timer.start(1)  # Adjust the interval as needed
+
         self.initUI()
         self.show()
         # self.check_server_health()
@@ -400,6 +410,11 @@ class MainWindow(QMainWindow):
                 f"Failed to create a TrackManager object: {str(e)}", ToastType.ERROR
             )
             return None
+
+    def run_async_tasks(self):
+        """Runs pending asyncio tasks."""
+        self.loop.stop()
+        self.loop.run_forever()
 
     async def check_server_health(self):
         try:
@@ -482,7 +497,7 @@ class MainWindow(QMainWindow):
                 self.track_model.create_unique_artist_index()
                 self.track_view.expandAll()
 
-            asyncio.run(load_and_update())
+            asyncio.ensure_future(load_and_update(), loop=self.loop)
 
     def clear_data(self) -> TrackModel:
         self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
@@ -553,7 +568,8 @@ def main():
     sys.excepthook = exception_hook
 
     app = QApplication(sys.argv)
-    MainWindow(app, api_host, api_port)
+    main_window =  MainWindow(app, api_host, api_port)
+    main_window.loop.run_forever()
 
 
 if __name__ == "__main__":
