@@ -25,92 +25,126 @@ class TrackModel(QAbstractItemModel):
                 "property": "file_path",
                 "display_name": "File Path",
                 "width": 100,
-                "editable": False,
                 "roles": [],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
+                ],
             },
             {
                 "property": "update_file",
                 "display_name": "Update",
                 "width": 100,
-                "editable": False,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
                 ],
             },
             {
                 "property": "title",
                 "display_name": "Track Title",
                 "width": 100,
-                "editable": True,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
                     Qt.ItemDataRole.EditRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
+                    Qt.ItemFlag.ItemIsEditable,
                 ],
             },
             {
                 "property": "album",
                 "display_name": "Album",
                 "width": 100,
-                "editable": True,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
                 ],
             },
             {
                 "property": "artist_string",
                 "display_name": "Artist(s)",
                 "width": 100,
-                "editable": True,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
                 ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
+                ],
             },
         ]
+
         self.artist_column_mappings = [
             {
                 "property": "mbid",
                 "display_name": "MBID",
                 "width": 100,
-                "editable": False,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
                 ],
             },
             {
                 "property": "type",
                 "display_name": "Type",
                 "width": 100,
-                "editable": False,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
                 ],
             },
             {
                 "property": "name",
                 "display_name": "Artist",
                 "width": 100,
-                "editable": False,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
                 ],
             },
             {
                 "property": "include",
                 "display_name": "Include",
                 "width": 100,
-                "editable": True,
                 "roles": [
                     Qt.ItemDataRole.CheckStateRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
+                    Qt.ItemFlag.ItemIsUserCheckable,
                 ],
             },
             {
                 "property": "custom_name",
                 "display_name": "Custom Name",
                 "width": 100,
-                "editable": True,
                 "roles": [
                     Qt.ItemDataRole.DisplayRole,
                     Qt.ItemDataRole.EditRole,
+                ],
+                "flags": [
+                    Qt.ItemFlag.ItemIsEnabled,
+                    Qt.ItemFlag.ItemIsSelectable,
+                    Qt.ItemFlag.ItemIsEditable,
                 ],
             },
         ]
@@ -180,7 +214,7 @@ class TrackModel(QAbstractItemModel):
         column = index.column()
         column_mapping = self.track_column_mappings[column]
 
-        if role not in column_mapping["roles"]:
+        if role not in column_mapping.get("roles", []):
             return None
 
         value = getattr(track, column_mapping["property"], None)
@@ -198,7 +232,7 @@ class TrackModel(QAbstractItemModel):
         artist = track.mbArtistDetails[index.row()]
         column_mapping = self.artist_column_mappings[index.column()]
 
-        if role not in column_mapping["roles"]:
+        if role not in column_mapping.get("roles", []):
             return None
 
         value = getattr(artist, column_mapping["property"], None)
@@ -227,13 +261,10 @@ class TrackModel(QAbstractItemModel):
         return False
 
     def setData_track(self, index, value, role=Qt.ItemDataRole.EditRole) -> bool:
-        if role not in [Qt.ItemDataRole.EditRole, Qt.ItemDataRole.CheckStateRole]:
-            return False
-
         track = self.track_manager.tracks[index.row()]
         column_mapping = self.track_column_mappings[index.column()]
 
-        if role not in column_mapping["roles"]:
+        if role not in column_mapping.get("roles", []):
             return False
 
         if column_mapping["property"] == "artist_string":
@@ -241,25 +272,28 @@ class TrackModel(QAbstractItemModel):
         else:
             setattr(track, column_mapping["property"], value)
 
+        if role == Qt.ItemDataRole.CheckStateRole:
+            self.layoutChanged.emit()
+
         return True
 
     def setData_artist(self, index, value, role=Qt.ItemDataRole.EditRole) -> bool:
-        if role not in [Qt.ItemDataRole.EditRole, Qt.ItemDataRole.CheckStateRole]:
-            return False
-
         track = index.parent().internalPointer()
         artist = track.mbArtistDetails[index.row()]
-        property_name = self.artist_column_mappings[index.column()]["property"]
+        column_mapping = self.artist_column_mappings[index.column()]
 
-        if property_name == "include" and role == Qt.ItemDataRole.CheckStateRole:
-            artist.include = value == Qt.CheckState.Checked.value
+        if role not in column_mapping.get("roles", []):
+            return False
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            value = value == Qt.CheckState.Checked.value
+
+        setattr(artist, column_mapping["property"], value)
+
+        if role == Qt.ItemDataRole.CheckStateRole:
             self.layoutChanged.emit()
-            return True
-        else:
-            setattr(artist, property_name, value)
-            return True
 
-        return False
+        return True
 
     def index(self, row, column, parent=QModelIndex()):
         """Returns the index of the element at the given position and column"""
@@ -292,23 +326,20 @@ class TrackModel(QAbstractItemModel):
         return QModelIndex()
 
     def flags(self, index):
+        """Returns the item flags for the specified index, e.g. selectable, editable, checkable"""
+        flags = Qt.ItemFlag.NoItemFlags
+
         if not index.isValid():
-            return Qt.ItemFlag.ItemIsEnabled
+            return flags
 
         column = index.column()
         if not index.parent().isValid():
-            editable = self.track_column_mappings[column]["editable"]
+            column_mapping = self.track_column_mappings[column]
         else:
-            editable = self.artist_column_mappings[column]["editable"]
+            column_mapping = self.artist_column_mappings[column]
 
-        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-        if editable:
-            flags |= Qt.ItemFlag.ItemIsEditable
-            if (
-                index.parent().isValid()
-                and self.artist_column_mappings[column]["property"] == "include"
-            ):
-                flags |= Qt.ItemFlag.ItemIsUserCheckable
+        for flag in column_mapping.get("flags", []):
+            flags |= flag
 
         return flags
 
