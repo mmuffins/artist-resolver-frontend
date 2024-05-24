@@ -146,9 +146,15 @@ async def test_trackmanager_load_directory(mocker):
     # Assert
     manager.read_file_metadata.assert_awaited_once()
     assert len(manager.tracks) == 3
-    assert os.path.normpath(manager.tracks[0].file_path) == os.path.normpath("/fake/directory/dir1/subdir1/file1.mp3")
-    assert os.path.normpath(manager.tracks[1].file_path) == os.path.normpath("/fake/directory/dir4/file1.mp3")
-    assert os.path.normpath(manager.tracks[2].file_path) == os.path.normpath("/fake/directory/dir4/file2.mp3")
+    assert os.path.normpath(manager.tracks[0].file_path) == os.path.normpath(
+        "/fake/directory/dir1/subdir1/file1.mp3"
+    )
+    assert os.path.normpath(manager.tracks[1].file_path) == os.path.normpath(
+        "/fake/directory/dir4/file1.mp3"
+    )
+    assert os.path.normpath(manager.tracks[2].file_path) == os.path.normpath(
+        "/fake/directory/dir4/file2.mp3"
+    )
 
 
 @pytest.mark.asyncio
@@ -755,3 +761,140 @@ async def test_replace_original_artist_overwrite_false():
     assert track2.original_artist == [
         "New Artist 2"
     ], "Failed to set original_artist when overwrite=False and original_artist is None"
+
+
+@pytest.mark.asyncio
+async def test_remove_track():
+    # Arrange
+    manager = TrackManager()
+
+    artist1 = MbArtistDetails(
+        name="Artist1",
+        type="Person",
+        disambiguation="",
+        sort_name="Artist1, Firstname",
+        id="mock-artist1-id",
+        aliases=[],
+        type_id="type-id-1",
+        joinphrase="",
+    )
+
+    artist2 = MbArtistDetails(
+        name="Artist2",
+        type="Person",
+        disambiguation="",
+        sort_name="Artist2, Firstname",
+        id="mock-artist2-id",
+        aliases=[],
+        type_id="type-id-2",
+        joinphrase="",
+    )
+
+    artist3 = MbArtistDetails(
+        name="Artist3",
+        type="Person",
+        disambiguation="",
+        sort_name="Artist3, Firstname",
+        id="mock-artist3-id",
+        aliases=[],
+        type_id="type-id-3",
+        joinphrase="",
+    )
+
+    track1 = create_mock_trackdetails()
+    track2 = create_mock_trackdetails()
+    track3 = create_mock_trackdetails()
+
+    track1.mbArtistDetails = [artist1]
+    track2.mbArtistDetails = [artist2]
+    track3.mbArtistDetails = [artist1, artist3]
+
+    manager.tracks = [track1, track2, track3]
+
+    # Populate artist_data manually for this test
+    manager.artist_data = {
+        artist1.id: artist1,
+        artist2.id: artist2,
+        artist3.id: artist3,
+    }
+
+    # Act
+    manager.remove_track(track1)
+
+    # Assert
+    assert len(manager.tracks) == 2
+    assert track1 not in manager.tracks
+    assert "mock-artist1-id" in manager.artist_data
+    assert "mock-artist2-id" in manager.artist_data
+    assert "mock-artist3-id" in manager.artist_data
+
+    manager.remove_track(track3)
+
+    assert len(manager.tracks) == 1
+    assert track3 not in manager.tracks
+    assert "mock-artist1-id" not in manager.artist_data
+    assert "mock-artist2-id" in manager.artist_data
+    assert "mock-artist3-id" not in manager.artist_data
+
+    manager.remove_track(track2)
+
+    assert len(manager.tracks) == 0
+    assert track2 not in manager.tracks
+    assert "mock-artist2-id" not in manager.artist_data
+
+
+@pytest.mark.asyncio
+async def test_remove_track_no_remaining_references():
+    # Arrange
+    manager = TrackManager()
+
+    artist1 = MbArtistDetails(
+        name="Artist1",
+        type="Person",
+        disambiguation="",
+        sort_name="Artist1, Firstname",
+        id="mock-artist1-id",
+        aliases=[],
+        type_id="type-id-1",
+        joinphrase="",
+    )
+
+    artist2 = MbArtistDetails(
+        name="Artist2",
+        type="Person",
+        disambiguation="",
+        sort_name="Artist2, Firstname",
+        id="mock-artist2-id",
+        aliases=[],
+        type_id="type-id-2",
+        joinphrase="",
+    )
+
+    track1 = create_mock_trackdetails()
+    track2 = create_mock_trackdetails()
+
+    track1.mbArtistDetails = [artist1, artist2]
+    track2.mbArtistDetails = [artist1]
+
+    manager.tracks = [track1, track2]
+
+    # Populate artist_data manually for this test
+    manager.artist_data = {
+        "mock-artist1-id": artist1,
+        "mock-artist2-id": artist2,
+    }
+
+    # Act
+    manager.remove_track(track1)
+
+    # Assert
+    assert len(manager.tracks) == 1
+    assert track1 not in manager.tracks
+    assert "mock-artist1-id" in manager.artist_data
+    assert "mock-artist2-id" not in manager.artist_data
+
+    manager.remove_track(track2)
+
+    assert len(manager.tracks) == 0
+    assert track2 not in manager.tracks
+    assert "mock-artist1-id" not in manager.artist_data

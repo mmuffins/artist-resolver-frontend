@@ -555,6 +555,25 @@ class TrackManager:
         self.tracks: list[TrackDetails] = []
         self.artist_data: dict[MbArtistDetails] = {}
 
+    def remove_track(self, track: TrackDetails) -> None:
+        """
+        Removes a track from the tracks property and updates the artist_data property accordingly.
+        """
+        # Remove the track from the tracks list
+        self.tracks.remove(track)
+
+        # Create a set of all artist MBIDs that are still referenced by remaining tracks
+        referenced_artist_mbids = set()
+        for track in self.tracks:
+            for artist in track.mbArtistDetails:
+                referenced_artist_mbids.add(artist.mbid)
+
+        # Remove artists from artist_data if they are no longer referenced by any tracks
+        self.artist_data = {mbid: artist for mbid, artist in self.artist_data.items() if mbid in referenced_artist_mbids}
+
+        # Remove track references from the track manager
+        track.manager = None
+
     async def load_directory(self, directory: str) -> None:
         """
         Gets all mp3 files in a directory and reads their id3 tags
