@@ -299,7 +299,7 @@ class MainWindow(QMainWindow):
 
     def load_directory(self) -> None:
         directory = QFileDialog.getExistingDirectory(
-            self, "Select Directory", "C:/Users/email_000/Desktop/music/sample/"
+            self, "Select Directory", "C:/Users/email_000/Desktop/music/sample/spiceandwolf"
         )
         if directory:
 
