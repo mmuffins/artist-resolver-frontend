@@ -3,6 +3,7 @@ import argparse
 import sys
 import asyncio
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex
+from PyQt6.QtGui import QKeyEvent
 from TrackManager import TrackManager, TrackDetails
 from PyQt6.QtWidgets import (
     QApplication,
@@ -13,6 +14,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QTreeView,
+    QMessageBox,
 )
 
 
@@ -433,6 +435,17 @@ class MainWindow(QMainWindow):
         self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
         self.track_model = TrackModel(self.track_manager)
         self.track_view.setModel(self.track_model)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Delete:
+            selected_indexes = self.track_view.selectedIndexes()
+            if selected_indexes:
+                selected_index = selected_indexes[0]
+                if selected_index.isValid():
+                    track_item = selected_index.internalPointer()
+                    if isinstance(track_item, TrackDetails):
+                        self.track_manager.remove_track(track_item)
+                        self.track_model.layoutChanged.emit()
 
 
 def main():
