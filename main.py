@@ -6,7 +6,7 @@ import httpx
 from Toast import Toast, ToastType
 from TrackManager import TrackManager, TrackDetails
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
-from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtGui import QKeyEvent, QPalette, QColor
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -24,11 +24,11 @@ from PyQt6.QtWidgets import (
 class TrackModel(QAbstractItemModel):
 
     header_names = [
-        {"display_name": "ID", "width": 120},
-        {"display_name": "Type", "width": 80},
-        {"display_name": "Name", "width": 150},
+        {"display_name": "Title", "width": 100},
+        {"display_name": "Type", "width": 100},
+        {"display_name": "Name", "width": 220},
         {"display_name": "Set", "width": 15},
-        {"display_name": "Custom Name", "width": 200},
+        {"display_name": "Custom Name", "width": 340},
     ]
 
     track_column_mappings = [
@@ -85,9 +85,7 @@ class TrackModel(QAbstractItemModel):
     artist_column_mappings = [
         {
             "property": "mbid",
-            "roles": [
-                Qt.ItemDataRole.DisplayRole,
-            ],
+            "roles": [],
             "flags": [
                 Qt.ItemFlag.ItemIsEnabled,
                 Qt.ItemFlag.ItemIsSelectable,
@@ -355,15 +353,47 @@ class MainWindow(QMainWindow):
 
         self.initUI()
         self.show()
-        # self.check_server_health()
+        self.check_server_health()
+        asyncio.ensure_future(self.check_server_health(), loop=self.loop)
 
         app.exec()
 
+    def apply_styles(self):
+        self.setStyleSheet(
+            """
+            QPushButton {
+                min-width: 80px;
+                min-height: 25px;
+                font-size: 16px;
+            }
+            QTreeView {
+                border : solid red;
+                border-width:  0px 0px 0px 0px;
+                font-size: 16px;
+            }
+            QHeaderView::section {
+                background-color: rgb(51, 51, 55);
+            }
+            QTreeView::item {
+                margin: 4px 0px;
+            }
+            QTreeView::indicator {
+                width: 20px;
+                height: 20px;
+            }
+            QMainWindow {
+                background-color: rgb(30, 30, 30);
+            }
+            * {
+                font-size: 16px;
+            }
+        """
+        )
+
     def initUI(self) -> None:
-        self.app.setStyle('Fusion')
         self.toast = None
         self.setWindowTitle("Track Manager")
-        self.setGeometry(100, 100, 700, 400)
+        self.setGeometry(100, 100, 1300, 700)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -372,17 +402,25 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(self.layout)
 
         self.track_view = QTreeView(self)
+
+        # workaround because setting the color for checkbox currently has a bug with stylesheets
+        treeview_palette = QPalette()
+        treeview_palette.setColor(QPalette.ColorRole.Window, QColor(255, 255, 255))
+        self.track_view.setPalette(treeview_palette)
+
         self.layout.addWidget(self.track_view)
 
-        self.add_bottom_layout()
+        self.add_actions_layout()
 
         self.clear_data()
         self.apply_column_width()
 
-    def add_bottom_layout(self):
+        self.app.setStyle("Fusion")
+        self.apply_styles()
+
+    def add_actions_layout(self):
         # Bottom layout for checkboxes and buttons
         bottom_layout = QHBoxLayout()
-
         checkboxes_layout = self.create_checkboxes_layout()
         bottom_layout.addLayout(checkboxes_layout)
 
@@ -486,7 +524,7 @@ class MainWindow(QMainWindow):
                     ToastType.ERROR,
                 )
 
-        asyncio.run(run())
+        asyncio.ensure_future(run(), loop=self.loop)
 
     def load_directory(self) -> None:
         directory = QFileDialog.getExistingDirectory(
@@ -608,7 +646,6 @@ def main():
 
     app = QApplication(sys.argv)
     main_window = MainWindow(app, api_host, api_port)
-    
 
     try:
         main_window.loop.run_forever()
