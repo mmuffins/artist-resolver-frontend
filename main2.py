@@ -89,88 +89,47 @@ class TrackModel(QAbstractItemModel):
             },
         ]
 
+    def rowCount(self, parent=QModelIndex()):
+        """Returns the number of rows"""
+        if not parent.isValid():
+            return len(self.track_manager.tracks)
+        else:
+            track = parent.internalPointer()
+            if isinstance(track, TrackDetails):
+                return len(track.mbArtistDetails)
+        return 0
+
+    def columnCount(self, parent=QModelIndex()):
+        """Returns the number of columns"""
+        if not parent.isValid():
+            return len(self.track_column_mappings)
+        else:
+            return len(self.artist_column_mappings)
+
     @pyqtSlot()
     def custom_layout_changed(self):
         self.create_unique_artist_index()
 
     def create_unique_artist_index(self):
+        """
+        Creates a list containing all tracks and artists.
+        This is required to uniquely identify artist rows as they can be referenced in multiple tracks
+        """
+
         self.track_index = []
         for track in self.track_manager.tracks:
             for artist in track.mbArtistDetails:
                 self.track_index.append({"track": track, "artist": artist})
 
     def get_unique_artist(self, track, artist):
+        """Retrieves the unique index of a track-artist combination"""
         for index, track_info in enumerate(self.track_index):
             if track_info["track"] == track and track_info["artist"] == artist:
                 return index, track_info
         return None, None
 
-    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid():
-            return None
-
-        if role not in (
-            Qt.ItemDataRole.DisplayRole,
-            Qt.ItemDataRole.EditRole,
-            Qt.ItemDataRole.CheckStateRole,
-        ):
-            return None
-
-        if not index.parent().isValid():
-            if role == Qt.ItemDataRole.CheckStateRole:
-                return None
-
-            track = self.track_manager.tracks[index.row()]
-            column = index.column()
-            property_name = self.track_column_mappings[column]["property"]
-            if property_name == "artist_string":
-                return track.get_artist_string()
-            return getattr(track, property_name, None)
-
-        property_name = self.artist_column_mappings[index.column()]["property"]
-        track = index.parent().internalPointer()
-        artist = track.mbArtistDetails[index.row()]
-
-        if role == Qt.ItemDataRole.CheckStateRole:
-            if property_name == "include":
-                return (
-                    Qt.CheckState.Checked if artist.include else Qt.CheckState.Unchecked
-                )
-            return None
-
-        return getattr(artist, property_name, None)
-
-    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
-        if not index.isValid():
-            return False
-
-        if role == Qt.ItemDataRole.EditRole or role == Qt.ItemDataRole.CheckStateRole:
-            if not index.parent().isValid():
-                track = self.track_manager.tracks[index.row()]
-                column = index.column()
-                property_name = self.track_column_mappings[column]["property"]
-                if property_name == "artist_string":
-                    track.artist = [value]
-                else:
-                    setattr(track, property_name, value)
-            else:
-                track = index.parent().internalPointer()
-                artist = track.mbArtistDetails[index.row()]
-                property_name = self.artist_column_mappings[index.column()]["property"]
-
-                if (
-                    property_name == "include"
-                    and role == Qt.ItemDataRole.CheckStateRole
-                ):
-                    artist.include = value == Qt.CheckState.Checked
-                else:
-                    setattr(artist, property_name, value)
-
-            self.dataChanged.emit(index, index, [role])
-            return True
-        return False
-
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        """Returns a string to be displayed in the header of a column"""
         if (
             orientation == Qt.Orientation.Horizontal
             and role == Qt.ItemDataRole.DisplayRole
@@ -182,7 +141,104 @@ class TrackModel(QAbstractItemModel):
             ]["display_name"]
         return None
 
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        """Returns data requested by an item from the underlying data object"""
+        if not index.isValid():
+            return None
+
+        if role not in (
+            Qt.ItemDataRole.DisplayRole,
+            Qt.ItemDataRole.EditRole,
+            Qt.ItemDataRole.CheckStateRole,
+        ):
+            return None
+
+        if not index.parent().isValid():
+            # items without parents are track objects
+            return self.data_track(index, role)
+
+        # items with parents are artist objects
+        return self.data_artist(index, role)
+
+    def data_track(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.CheckStateRole:
+            return None
+
+        track = self.track_manager.tracks[index.row()]
+        column = index.column()
+        property_name = self.track_column_mappings[column]["property"]
+
+        if property_name == "artist_string":
+            return track.get_artist_string()
+        return getattr(track, property_name, None)
+
+    def data_artist(self, index, role=Qt.ItemDataRole.DisplayRole):
+        track = index.parent().internalPointer()
+        artist = track.mbArtistDetails[index.row()]
+        property_name = self.artist_column_mappings[index.column()]["property"]
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            if property_name == "include":
+                return (
+                    Qt.CheckState.Checked if artist.include else Qt.CheckState.Unchecked
+                )
+            return None
+
+        return getattr(artist, property_name, None)
+
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        """Writes data back to the underlying data object once an item was modified"""
+        if not index.isValid():
+            return False
+
+        was_edited = False
+
+        if not index.parent().isValid():
+            # items without parents are track objects
+            was_edited = self.setData_track(index, value, role)
+        else:
+            was_edited = self.setData_artist(index, value, role)
+
+        if was_edited:
+            self.dataChanged.emit(index, index, [role])
+            return True
+        return False
+
+    def setData_track(self, index, value, role=Qt.ItemDataRole.EditRole) -> bool:
+        if role not in [Qt.ItemDataRole.EditRole, Qt.ItemDataRole.CheckStateRole]:
+            return False
+
+        track = self.track_manager.tracks[index.row()]
+        column = index.column()
+        property_name = self.track_column_mappings[column]["property"]
+
+        if property_name == "artist_string":
+            track.artist = [value]
+        else:
+            setattr(track, property_name, value)
+
+        return True
+
+    def setData_artist(self, index, value, role=Qt.ItemDataRole.EditRole) -> bool:
+        if role not in [Qt.ItemDataRole.EditRole, Qt.ItemDataRole.CheckStateRole]:
+            return False
+
+        track = index.parent().internalPointer()
+        artist = track.mbArtistDetails[index.row()]
+        property_name = self.artist_column_mappings[index.column()]["property"]
+
+        if property_name == "include" and role == Qt.ItemDataRole.CheckStateRole:
+            artist.include = value == Qt.CheckState.Checked.value
+            self.layoutChanged.emit()
+            return True
+        else:
+            setattr(artist, property_name, value)
+            return True
+
+        return False
+
     def index(self, row, column, parent=QModelIndex()):
+        """Returns the index of the element at the given position and column"""
         if not parent.isValid():
             if row < len(self.track_manager.tracks):
                 return self.createIndex(row, column, self.track_manager.tracks[row])
@@ -198,6 +254,7 @@ class TrackModel(QAbstractItemModel):
         return QModelIndex()
 
     def parent(self, index):
+        """Returns the parent of the element at index"""
         if not index.isValid():
             return QModelIndex()
 
@@ -209,21 +266,6 @@ class TrackModel(QAbstractItemModel):
             return self.createIndex(row, 0, track)
 
         return QModelIndex()
-
-    def rowCount(self, parent=QModelIndex()):
-        if not parent.isValid():
-            return len(self.track_manager.tracks)
-        else:
-            track = parent.internalPointer()
-            if isinstance(track, TrackDetails):
-                return len(track.mbArtistDetails)
-        return 0
-
-    def columnCount(self, parent=QModelIndex()):
-        if not parent.isValid():
-            return len(self.track_column_mappings)
-        else:
-            return len(self.artist_column_mappings)
 
     def flags(self, index):
         if not index.isValid():
@@ -312,6 +354,7 @@ class MainWindow(QMainWindow):
                 await self.track_manager.load_directory(directory)
                 await self.track_manager.update_artists_info_from_db()
 
+                self.track_model.create_unique_artist_index()
                 self.track_model.layoutChanged.emit()
                 self.track_view.expandAll()
 
