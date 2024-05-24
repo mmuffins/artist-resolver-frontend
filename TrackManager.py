@@ -92,11 +92,13 @@ class MbArtistDetails:
 
     def __repr__(self):
         return f"{self.name}"
+    
+    @property
+    def formatted_artist(self) -> str:
+        """
+        Returns a formatted string representing the artist
+        """
 
-    def get_formatted_artist(self) -> str:
-        """
-        Returns a formatted string representing the instance.
-        """
         display_name = self.custom_name if self.custom_name else self.name
         if self.type.lower() in ["character", "group"]:
             return f"({display_name.strip('()')})"
@@ -402,20 +404,30 @@ class TrackDetails:
     def __repr__(self):
         return f"{self.title}"
 
-    def get_artist_string(self) -> str:
+    @property
+    def formatted_artist(self) -> str:
         """
-        Returns a formatted string for all artists of the object
+        Returns a formatted string for the artist track
         """
 
-        return "; ".join(self.get_included_artist_list())
+        return "; ".join(self.artist)
 
-    def get_included_artist_list(self) -> str:
+    @property
+    def formatted_new_artist(self) -> str:
+        """
+        Returns a formatted string for all mbartists of the track
+        """
+
+        return "; ".join(self.included_artist_list)
+
+    @property
+    def included_artist_list(self) -> str:
         """
         Returns a formatted string for all artists of the object
         """
 
         return [
-            artist.get_formatted_artist()
+            artist.formatted_artist
             for artist in self.mbArtistDetails
             if artist.include is True
         ]
@@ -500,7 +512,7 @@ class TrackDetails:
         # e.g. groups, or character-person combnations.
         # Make sure to split on semicolon again to properly write these entries as
         # separate id3 tags
-        artists = self.get_included_artist_list() or self.artist
+        artists = self.get_included_artist_list or self.artist
         split_artists = []
         for entry in artists:
             split_artists.extend([artist.strip() for artist in entry.split(";")])

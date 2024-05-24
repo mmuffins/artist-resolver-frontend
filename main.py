@@ -14,14 +14,13 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QTreeView,
-    QMessageBox,
 )
 
 
 class TrackModel(QAbstractItemModel):
 
     header_names = [
-        {"display_name": "MBID", "width": 100},
+        {"display_name": "ID", "width": 100},
         {"display_name": "Type", "width": 100},
         {"display_name": "Name", "width": 100},
         {"display_name": "Set", "width": 20},
@@ -30,8 +29,20 @@ class TrackModel(QAbstractItemModel):
 
     track_column_mappings = [
         {
-            "property": "file_path",
-            "roles": [],
+            "property": "title",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "formatted_artist",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
             "flags": [
                 Qt.ItemFlag.ItemIsEnabled,
                 Qt.ItemFlag.ItemIsSelectable,
@@ -39,24 +50,10 @@ class TrackModel(QAbstractItemModel):
         },
         {
             "property": "update_file",
-            "roles": [
-                Qt.ItemDataRole.DisplayRole,
-            ],
+            "roles": [],
             "flags": [
                 Qt.ItemFlag.ItemIsEnabled,
                 Qt.ItemFlag.ItemIsSelectable,
-            ],
-        },
-        {
-            "property": "title",
-            "roles": [
-                Qt.ItemDataRole.DisplayRole,
-                Qt.ItemDataRole.EditRole,
-            ],
-            "flags": [
-                Qt.ItemFlag.ItemIsEnabled,
-                Qt.ItemFlag.ItemIsSelectable,
-                Qt.ItemFlag.ItemIsEditable,
             ],
         },
         {
@@ -70,7 +67,7 @@ class TrackModel(QAbstractItemModel):
             ],
         },
         {
-            "property": "artist_string",
+            "property": "formatted_new_artist",
             "roles": [
                 Qt.ItemDataRole.DisplayRole,
             ],
@@ -217,9 +214,6 @@ class TrackModel(QAbstractItemModel):
         if role == Qt.ItemDataRole.CheckStateRole:
             value = Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
 
-        if column_mapping["property"] == "artist_string":
-            value = track.get_artist_string()
-
         return value
 
     def data_artist(self, index, role=Qt.ItemDataRole.DisplayRole):
@@ -262,10 +256,7 @@ class TrackModel(QAbstractItemModel):
         if role not in column_mapping.get("roles", []):
             return False
 
-        if column_mapping["property"] == "artist_string":
-            track.artist = [value]
-        else:
-            setattr(track, column_mapping["property"], value)
+        setattr(track, column_mapping["property"], value)
 
         if role == Qt.ItemDataRole.CheckStateRole:
             self.layoutChanged.emit()

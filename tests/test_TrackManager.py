@@ -366,8 +366,6 @@ async def test_save_file_metadata_no_changes(mock_id3_tags):
         }
     )
 
-    track.get_artist_string = MagicMock(return_value="Same Artist")
-
     # Act
     track.save_file_metadata()
 
@@ -403,15 +401,13 @@ async def test_save_file_metadata_changes(mock_id3_tags):
         }
     )
 
-    track.get_artist_string = MagicMock(return_value="New Artist")
-
     # Act
     track.save_file_metadata()
 
     # Assert
     expected_setitem_calls = [
         call("TIT2", TIT2(encoding=3, text=track.title)),
-        call("TPE1", TPE1(encoding=3, text=track.get_artist_string())),
+        call("TPE1", TPE1(encoding=3, text="New Artist")),
         call("TALB", TALB(encoding=3, text=track.album)),
         call("TPE2", TPE2(encoding=3, text=track.album_artist)),
         call("TIT1", TIT1(encoding=3, text=track.grouping)),
@@ -452,8 +448,6 @@ async def test_save_file_metadata_clear_tags(mock_id3_tags):
             "TPE3": TPE3(encoding=3, text="Old Original Title"),
         }
     )
-
-    track.get_artist_string = MagicMock(return_value=None)
 
     # Act
     track.save_file_metadata()
@@ -501,17 +495,15 @@ async def test_save_file_metadata_partial_changes(mock_id3_tags):
         }
     )
 
-    track.get_artist_string = MagicMock(return_value="New Artist")
-
     # Act
     track.save_file_metadata()
 
     # Assert
     expected_setitem_calls = [
-        call("TIT2", TIT2(encoding=3, text=track.title)),
-        call("TPE1", TPE1(encoding=3, text=track.get_artist_string())),
-        call("TALB", TALB(encoding=3, text=track.album)),
-        call("TIT1", TIT1(encoding=3, text=track.grouping)),
+        call("TIT2", TIT2(encoding=3, text="New Title")),
+        call("TPE1", TPE1(encoding=3, text="New Artist")),
+        call("TALB", TALB(encoding=3, text="New Album")),
+        call("TIT1", TIT1(encoding=3, text="New Grouping")),
     ]
     expected_pop_calls = [call("TOAL", None), call("TPE3", None)]
 
@@ -523,7 +515,7 @@ async def test_save_file_metadata_partial_changes(mock_id3_tags):
 
 
 @pytest.mark.asyncio
-async def test_get_formatted_artist():
+async def test_formatted_new_artist():
     # Test case where custom_name is not None or empty
     artist = MbArtistDetails(
         name="Original Artist",
@@ -537,38 +529,38 @@ async def test_get_formatted_artist():
     )
     artist.custom_name = "Custom Artist"
     assert (
-        artist.get_formatted_artist() == "Custom Artist"
+        artist.formatted_new_artist == "Custom Artist"
     ), "Failed when custom_name is set"
 
     # Test case where custom_name is None
     artist.custom_name = None
     assert (
-        artist.get_formatted_artist() == "Original Artist"
+        artist.formatted_new_artist == "Original Artist"
     ), "Failed when custom_name is None"
 
     # Test case where custom_name is empty
     artist.custom_name = ""
     assert (
-        artist.get_formatted_artist() == "Original Artist"
+        artist.formatted_new_artist == "Original Artist"
     ), "Failed when custom_name is empty"
 
     # Test case where type is "character"
     artist.type = "character"
     artist.custom_name = "Custom Character"
     assert (
-        artist.get_formatted_artist() == "(Custom Character)"
+        artist.formatted_new_artist == "(Custom Character)"
     ), "Failed when type is 'character'"
 
     # Test case where type is "group"
     artist.type = "group"
     artist.custom_name = "Custom Group"
     assert (
-        artist.get_formatted_artist() == "(Custom Group)"
+        artist.formatted_new_artist == "(Custom Group)"
     ), "Failed when type is 'group'"
 
 
 @pytest.mark.asyncio
-async def test_get_artist_string():
+async def test_formatted_new_artist():
     # Arrange
     manager = TrackManager()
     track = TrackDetails("/fake/path/file1.mp3", manager)
@@ -615,7 +607,7 @@ async def test_get_artist_string():
     track.mbArtistDetails = [artist1, artist2, artist3]
 
     # Act
-    concatenated_string = track.get_artist_string()
+    concatenated_string = track.formatted_new_artist
 
     # Assert
     assert (
@@ -624,14 +616,14 @@ async def test_get_artist_string():
 
 
 @pytest.mark.asyncio
-async def test_get_artist_string_empty():
+async def test_formatted_new_artist_empty():
     # Arrange
     manager = TrackManager()
     track = TrackDetails("/fake/path/file2.mp3", manager)
     track.mbArtistDetails = []
 
     # Act
-    concatenated_string = track.get_artist_string()
+    concatenated_string = track.formatted_new_artist
 
     # Assert
     assert (

@@ -461,7 +461,7 @@ class TrackManagerGUI:
         label_current_track_artist.grid(column=1, row=0, sticky=W)
 
         label_new_track_artist = Label(
-            frame, text=f"{track.get_artist_string()}", pady=1
+            frame, text=f"{track.formatted_new_artist}", pady=1
         )
         label_new_track_artist.grid(column=0, row=2, sticky=W)
 
@@ -723,7 +723,7 @@ class TrackManagerGUI:
         for track in self.track_manager.tracks:
             # Update each label with the current artist information
             current_artists = "; ".join(track.artist)
-            new_artists = track.get_artist_string()
+            new_artists = track.formatted_new_artist
 
             track.cb_update_file.config(text=f"{track.title}")
             track.label_current_track_artist.config(text=f"{current_artists}")
