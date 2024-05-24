@@ -336,7 +336,6 @@ class MainWindow(QMainWindow):
         self.layout = QVBoxLayout()
         central_widget.setLayout(self.layout)
 
-        # Adding UI components
         self.cb_replace_original_title = QCheckBox("Replace original title", self)
         self.layout.addWidget(self.cb_replace_original_title)
 
@@ -354,6 +353,7 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.cb_overwrite_existing_original_artist)
 
         self.btn_save = QPushButton("Save", self)
+        self.btn_save.clicked.connect(self.save_changes)
         self.layout.addWidget(self.btn_save)
 
         self.btn_load_files = QPushButton("Select Folder", self)
@@ -363,6 +363,20 @@ class MainWindow(QMainWindow):
         self.track_view = QTreeView(self)
         self.layout.addWidget(self.track_view)
         self.clear_data()
+
+    def save_changes(self) -> None:
+        async def runX():
+            try:
+                await self.track_manager.send_changes_to_db()
+            except Exception as e:
+                print(f"{e}")
+
+            try:
+                await self.track_manager.save_files()
+            except Exception as e:
+                print(f"{e}")
+
+        asyncio.run(runX())
 
     def load_directory(self) -> None:
         directory = QFileDialog.getExistingDirectory(
