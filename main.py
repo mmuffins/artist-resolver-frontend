@@ -19,154 +19,128 @@ from PyQt6.QtWidgets import (
 
 
 class TrackModel(QAbstractItemModel):
+
+    header_names = [
+        {"display_name": "MBID", "width": 100},
+        {"display_name": "Type", "width": 100},
+        {"display_name": "Name", "width": 100},
+        {"display_name": "Set", "width": 20},
+        {"display_name": "Custom Name", "width": 100},
+    ]
+
+    track_column_mappings = [
+        {
+            "property": "file_path",
+            "roles": [],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "update_file",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "title",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+                Qt.ItemDataRole.EditRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+                Qt.ItemFlag.ItemIsEditable,
+            ],
+        },
+        {
+            "property": "album",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "artist_string",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+    ]
+
+    artist_column_mappings = [
+        {
+            "property": "mbid",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "type",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "name",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "include",
+            "roles": [
+                Qt.ItemDataRole.CheckStateRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+                Qt.ItemFlag.ItemIsUserCheckable,
+            ],
+        },
+        {
+            "property": "custom_name",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+                Qt.ItemDataRole.EditRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+                Qt.ItemFlag.ItemIsEditable,
+            ],
+        },
+    ]
+
+
     def __init__(self, track_manager):
         super().__init__()
         self.track_manager = track_manager
-        self.track_column_mappings = [
-            {
-                "property": "file_path",
-                "display_name": "File Path",
-                "width": 100,
-                "roles": [],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                ],
-            },
-            {
-                "property": "update_file",
-                "display_name": "Update",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                ],
-            },
-            {
-                "property": "title",
-                "display_name": "Track Title",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                    Qt.ItemDataRole.EditRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                    Qt.ItemFlag.ItemIsEditable,
-                ],
-            },
-            {
-                "property": "album",
-                "display_name": "Album",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                ],
-            },
-            {
-                "property": "artist_string",
-                "display_name": "Artist(s)",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                ],
-            },
-        ]
-
-        self.artist_column_mappings = [
-            {
-                "property": "mbid",
-                "display_name": "MBID",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                ],
-            },
-            {
-                "property": "type",
-                "display_name": "Type",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                ],
-            },
-            {
-                "property": "name",
-                "display_name": "Artist",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                ],
-            },
-            {
-                "property": "include",
-                "display_name": "Include",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.CheckStateRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                    Qt.ItemFlag.ItemIsUserCheckable,
-                ],
-            },
-            {
-                "property": "custom_name",
-                "display_name": "Custom Name",
-                "width": 100,
-                "roles": [
-                    Qt.ItemDataRole.DisplayRole,
-                    Qt.ItemDataRole.EditRole,
-                ],
-                "flags": [
-                    Qt.ItemFlag.ItemIsEnabled,
-                    Qt.ItemFlag.ItemIsSelectable,
-                    Qt.ItemFlag.ItemIsEditable,
-                ],
-            },
-        ]
-
-    def rowCount(self, parent=QModelIndex()):
-        """Returns the number of rows"""
-        if not parent.isValid():
-            return len(self.track_manager.tracks)
-        else:
-            track = parent.internalPointer()
-            if isinstance(track, TrackDetails):
-                return len(track.mbArtistDetails)
-        return 0
-
-    def columnCount(self, parent=QModelIndex()):
-        """Returns the number of columns"""
-        if not parent.isValid():
-            return len(self.track_column_mappings)
-        else:
-            return len(self.artist_column_mappings)
 
     def create_unique_artist_index(self):
         """
@@ -186,19 +160,36 @@ class TrackModel(QAbstractItemModel):
                 return index, track_info
         return None, None
 
+    def rowCount(self, parent=QModelIndex()):
+        """Returns the number of rows"""
+        if not parent.isValid():
+            return len(self.track_manager.tracks)
+        else:
+            track = parent.internalPointer()
+            if isinstance(track, TrackDetails):
+                return len(track.mbArtistDetails)
+        return 0
+
+    def columnCount(self, parent=QModelIndex()):
+        """Returns the number of columns"""
+        if not parent.isValid():
+            return len(self.track_column_mappings)
+        else:
+            return len(self.artist_column_mappings)
+
+    def columnWidth(self, section):
+        """Returns the width of the column"""
+        if section < len(self.header_names):
+            return self.header_names[section]["width"]
+        return 100  # Default width if section index is out of range
+
     def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
         """Returns a string to be displayed in the header of a column"""
-        if (
-            orientation == Qt.Orientation.Horizontal
-            and role == Qt.ItemDataRole.DisplayRole
-        ):
-            if section < len(self.track_column_mappings):
-                return self.track_column_mappings[section]["display_name"]
-            return self.artist_column_mappings[
-                section - len(self.track_column_mappings)
-            ]["display_name"]
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+            if section < len(self.header_names):
+                return self.header_names[section]["display_name"]
         return None
-
+    
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         """Returns data requested by an item from the underlying data object"""
         if not index.isValid():
@@ -396,6 +387,8 @@ class MainWindow(QMainWindow):
         self.track_view = QTreeView(self)
         self.layout.addWidget(self.track_view)
         self.clear_data()
+        self.apply_column_width()
+
 
     def save_changes(self) -> None:
         async def run():
@@ -435,6 +428,10 @@ class MainWindow(QMainWindow):
         self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
         self.track_model = TrackModel(self.track_manager)
         self.track_view.setModel(self.track_model)
+
+    def apply_column_width(self) -> None:
+        for i in range(len(self.track_model.header_names)):
+            self.track_view.setColumnWidth(i, self.track_model.columnWidth(i))
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Delete:
