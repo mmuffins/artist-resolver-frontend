@@ -1,7 +1,6 @@
 from enum import Enum
 from PyQt6.QtCore import (
     Qt,
-    QTimer,
     QPoint,
     QPropertyAnimation,
     QSequentialAnimationGroup,
@@ -11,7 +10,6 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLabel,
-    QProgressBar,
 )
 
 

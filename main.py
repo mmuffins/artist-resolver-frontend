@@ -4,7 +4,7 @@ import sys
 import asyncio
 import httpx
 from Toast import Toast, ToastType
-from TrackManager import TrackManager, TrackDetails
+from artist_resolver.trackmanager import TrackManager, TrackDetails
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
 from PyQt6.QtGui import QKeyEvent, QPalette, QColor, QPainter, QFontDatabase
 from PyQt6.QtWidgets import (

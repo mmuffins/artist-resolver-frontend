@@ -12,5 +12,5 @@ if(-not [bool]$env:VIRTUAL_ENV){
   return
 }
 
-& pip install -r ./requirements.txt
+& pip install -r ./requirements/common.txt
 python -m main
