@@ -406,7 +406,6 @@ class MainWindow(QMainWindow):
 
         self.initUI()
         self.show()
-        self.check_server_health()
         asyncio.ensure_future(self.check_server_health(), loop=self.loop)
 
         app.exec()
