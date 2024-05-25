@@ -40,7 +40,14 @@ class ArtistDelegate(QStyledItemDelegate):
     ):
         column = index.column()
 
-        if index.parent().isValid():  # This is an artist item
+        if not index.parent().isValid():
+            # This is a track item (parent)
+            track = index.internalPointer()
+
+            # bold text for track rows
+            option.font.setBold(True)
+        else:
+            # This is an artist item
             track = index.parent().internalPointer()
             artist = track.mbArtistDetails[index.row()]
 
@@ -393,7 +400,9 @@ class MainWindow(QMainWindow):
         # Use QTimer to periodically run the event loop
         self.timer = QTimer()
         self.timer.timeout.connect(self.run_async_tasks)
-        self.timer.start(1)  # Adjust the interval as needed
+        # the loop runs each millisecond, setting the value higher sometimes caused
+        # weird issues where async actions would randomly fail or time out
+        self.timer.start(1)
 
         self.initUI()
         self.show()
@@ -429,11 +438,6 @@ class MainWindow(QMainWindow):
         self.track_model = TrackModel(self.track_manager)
         self.track_view.setModel(self.track_model)
         self.track_view.setItemDelegate(ArtistDelegate(self, self.track_model))
-
-        # workaround because setting the color for checkbox currently has a bug with stylesheets
-        # treeview_palette = QPalette()
-        # treeview_palette.setColor(QPalette.ColorRole.Window, QColor(255, 255, 255))
-        # self.track_view.setPalette(treeview_palette)
 
         self.layout.addWidget(self.track_view)
 
