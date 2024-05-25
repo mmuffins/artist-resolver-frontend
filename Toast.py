@@ -35,8 +35,6 @@ class Toast(QWidget):
         self.duration = duration
         self.toast_type = toast_type
 
-        self.elapsed_time = 0
-
         self.setup_ui()
         self.setup_animations()
 
@@ -51,7 +49,6 @@ class Toast(QWidget):
         self.adjustSize()
 
     def setup_animations(self):
-        self.timer = QTimer(self)
 
         self.animation_group = QSequentialAnimationGroup()
 
@@ -103,7 +100,6 @@ class Toast(QWidget):
 
     def showEvent(self, event):
         self.animation_group.start()
-        self.timer.start(self.duration // 100)
         super().showEvent(event)
 
     def show(self):
@@ -112,7 +108,6 @@ class Toast(QWidget):
         self.raise_()
 
     def hide(self):
-        self.timer.stop()
         super().hide()
 
     def update_position(self, parent_rect):
