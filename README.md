@@ -6,14 +6,18 @@ Create a virtual environment
 ```powershell
 python -m venv .venv
 ./.venv/Scripts/Activate.ps1
-pip install -r ./requirements.txt
+pip install -r ./requirements/common.txt
+
+# to include dev requirements
+pip install -r ./requirements/dev.txt
 ```
 
 Check for outdated libraries:
 ```powershell
 pip list --outdated
 python.exe -m pip install --upgrade [packagename]
-pip freeze > requirements.txt
+
+pip freeze
 ```
 When freezing requirements, make sture manually check the created file to only include top-level packages, and set all packages to match by '~=' instead of '==' to always install the lastest patch version of a package.
 
@@ -32,7 +36,7 @@ $ENV:ARTIST_RESOLVER_PORT = "80"
 python -m main
 ```
 
-The project root contains a run.ps1 which verifies that all dependencies are installed and then runs the python script. Note that this expects the correct environment variables to be set:
+The project root contains a run.ps1 which runs the python script. Dependencies still need to be installed manually. Note that this expects the correct environment variables to be set:
 
 ```powershell 
 $ENV:ARTIST_RESOLVER_HOST = "endpoint.com"

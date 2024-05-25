@@ -1,737 +1,649 @@
 import os
-import asyncio
 import argparse
+import sys
+import asyncio
 import httpx
-from enum import Enum
-from tkinter import *
-from tkinter import filedialog
-import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
-from ttkbootstrap.scrolled import ScrolledFrame
-from TrackManager import TrackManager
-from ttkbootstrap.toast import ToastNotification
+from Toast import Toast, ToastType
+from artist_resolver.trackmanager import TrackManager, TrackDetails
+from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
+from PyQt6.QtGui import QKeyEvent, QPalette, QColor, QPainter, QFontDatabase
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QPushButton,
+    QCheckBox,
+    QFileDialog,
+    QTreeView,
+    QHBoxLayout,
+    QGridLayout,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+)
 
 
-def async_run(func):
-    def wrapper(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            return asyncio.create_task(func(*args, **kwargs))
+class ArtistDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None, model=None):
+        super().__init__(parent)
+        self.model = model
+        self.custom_name_column = self.get_custom_name_column()
+
+    def get_custom_name_column(self):
+        for i, column in enumerate(self.model.artist_column_mappings):
+            if column["property"] == "custom_name":
+                return i
+        return -1
+
+    def paint(
+        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex
+    ):
+        column = index.column()
+
+        if not index.parent().isValid():
+            # This is a track item (parent)
+            track = index.internalPointer()
+
+            # bold text for track rows
+            option.font.setBold(True)
         else:
-            return loop.run_until_complete(func(*args, **kwargs))
+            # This is an artist item
+            track = index.parent().internalPointer()
+            artist = track.mbArtistDetails[index.row()]
 
-    return wrapper
+            if not artist.include:
+                # grey out entire line if the artist is not included
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(95, 95, 95))
+
+            if column == self.custom_name_column and not artist.custom_name_edited:
+                # set to red if the artist was not edited
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 23, 62))
+
+            if column == self.custom_name_column and artist.updated_from_server:
+                # set to purple if artist was updated from server
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(164, 97, 240))
+
+            if column == self.custom_name_column and artist.custom_name_edited:
+                # set to green if the artist was edited
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(58, 235, 157))
+
+        super().paint(painter, option, index)
 
 
-class toast_type(Enum):
-    info = 1
-    success = 2
-    error = 3
+class TrackModel(QAbstractItemModel):
 
+    header_names = [
+        {"display_name": "Title", "width": 100},
+        {"display_name": "Type", "width": 100},
+        {"display_name": "Name", "width": 220},
+        {"display_name": "Set", "width": 15},
+        {"display_name": "Custom Name", "width": 340},
+    ]
 
-class TrackManagerGUI:
-    # Mapping between columns and source data in format
-    data_mapping = {
-        "file_path": {
-            "source_object": "track_details",
-            "property": "file_path",
-            "display_name": "File Path",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "update_file": {
-            "source_object": "track_details",
-            "property": "update_file",
-            "display_name": "Update",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "title": {
-            "source_object": "track_details",
+    track_column_mappings = [
+        {
             "property": "title",
-            "display_name": "Track Title",
-            "width": 100,
-            "editable": False,
-            "display": True,
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
         },
-        "original_title": {
-            "source_object": "track_details",
-            "property": "original_title",
-            "display_name": "Orig Title",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "track_artist": {
-            "source_object": "track_details",
-            "property": "artist",
-            "display_name": "Track Artist",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "artist_sort": {
-            "source_object": "mbartist_details",
-            "property": "sort_name",
-            "display_name": "Sort Artist",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "original_artist": {
-            "source_object": "track_details",
-            "property": "original_artist",
-            "display_name": "Orig Artist",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "album": {
-            "source_object": "track_details",
+        {
             "property": "album",
-            "display_name": "Album",
-            "width": 100,
-            "editable": False,
-            "display": False,
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
         },
-        "product": {
-            "source_object": "track_details",
-            "property": "product",
-            "display_name": "Product",
-            "width": 100,
-            "editable": False,
-            "display": False,
+        {
+            "property": "formatted_artist",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
         },
-        "original_album": {
-            "source_object": "track_details",
-            "property": "original_album",
-            "display_name": "Orig Album",
-            "width": 100,
-            "editable": False,
-            "display": False,
+        {
+            "property": None,
+            "roles": [],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
         },
-        "album_artist": {
-            "source_object": "track_details",
-            "property": "album_artist",
-            "display_name": "Album Artist",
-            "width": 100,
-            "editable": False,
-            "display": False,
+        {
+            "property": "formatted_new_artist",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
         },
-        "grouping": {
-            "source_object": "track_details",
-            "property": "grouping",
-            "display_name": "Grouping",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "mbid": {
-            "source_object": "mbartist_details",
-            "property": "mbid",
-            "display_name": "MBID",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "type": {
-            "source_object": "mbartist_details",
-            "property": "type",
-            "display_name": "Type",
-            "width": 85,
-            "editable": False,
-            "display": True,
-        },
-        "artist": {
-            "source_object": "mbartist_details",
-            "property": "name",
-            "display_name": "Artist",
-            "width": 100,
-            "editable": False,
-            "display": True,
-        },
-        "joinphrase": {
-            "source_object": "mbartist_details",
-            "property": "joinphrase",
-            "display_name": "Join Phrase",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "include": {
-            "source_object": "mbartist_details",
-            "property": "include",
-            "display_name": "",
-            "width": 30,
-            "editable": False,
-            "display": True,
-        },
-        "custom_name": {
-            "source_object": "mbartist_details",
-            "property": "custom_name",
-            "display_name": "Custom Name",
-            "width": 100,
-            "editable": True,
-            "display": True,
-        },
-        "custom_original_name": {
-            "source_object": "mbartist_details",
-            "property": "custom_original_name",
-            "display_name": "Custom Orig Name",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-        "updated_from_server": {
-            "source_object": "mbartist_details",
-            "property": "updated_from_server",
-            "display_name": "Has Server Information",
-            "width": 100,
-            "editable": False,
-            "display": False,
-        },
-    }
+    ]
 
-    def __init__(self, root, api_host, api_port):
-        self.root = root
+    artist_column_mappings = [
+        {
+            "property": "mbid",
+            "roles": [],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "type",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "name",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+            ],
+        },
+        {
+            "property": "include",
+            "roles": [
+                Qt.ItemDataRole.CheckStateRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+                Qt.ItemFlag.ItemIsUserCheckable,
+            ],
+        },
+        {
+            "property": "custom_name",
+            "roles": [
+                Qt.ItemDataRole.DisplayRole,
+                Qt.ItemDataRole.EditRole,
+            ],
+            "flags": [
+                Qt.ItemFlag.ItemIsEnabled,
+                Qt.ItemFlag.ItemIsSelectable,
+                Qt.ItemFlag.ItemIsEditable,
+            ],
+        },
+    ]
+
+    def __init__(self, track_manager):
+        super().__init__()
+        self.track_manager = track_manager
+
+    def create_unique_artist_index(self):
+        """
+        Creates a list containing all tracks and artists.
+        This is required to uniquely identify artist rows as they can be referenced in multiple tracks
+        """
+
+        self.track_index = []
+        for track in self.track_manager.tracks:
+            for artist in track.mbArtistDetails:
+                self.track_index.append({"track": track, "artist": artist})
+
+    def get_unique_artist(self, track, artist):
+        """Retrieves the unique index of a track-artist combination"""
+        for index, track_info in enumerate(self.track_index):
+            if track_info["track"] == track and track_info["artist"] == artist:
+                return index, track_info
+        return None, None
+
+    def rowCount(self, parent=QModelIndex()):
+        """Returns the number of rows"""
+        if not parent.isValid():
+            return len(self.track_manager.tracks)
+        else:
+            track = parent.internalPointer()
+            if isinstance(track, TrackDetails):
+                return len(track.mbArtistDetails)
+        return 0
+
+    def columnCount(self, parent=QModelIndex()):
+        """Returns the number of columns"""
+        if not parent.isValid():
+            return len(self.track_column_mappings)
+        else:
+            return len(self.artist_column_mappings)
+
+    def columnWidth(self, section):
+        """Returns the width of the column"""
+        if section < len(self.header_names):
+            return self.header_names[section]["width"]
+        return 100  # Default width if section index is out of range
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        """Returns a string to be displayed in the header of a column"""
+        if (
+            orientation == Qt.Orientation.Horizontal
+            and role == Qt.ItemDataRole.DisplayRole
+        ):
+            if section < len(self.header_names):
+                return self.header_names[section]["display_name"]
+        return None
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        """Returns data requested by an item from the underlying data object"""
+        if not index.isValid():
+            return None
+
+        if not index.parent().isValid():
+            # items without parents are track objects
+            return self.data_track(index, role)
+
+        # items with parents are artist objects
+        return self.data_artist(index, role)
+
+    def data_track(self, index, role=Qt.ItemDataRole.DisplayRole):
+        track = self.track_manager.tracks[index.row()]
+        column = index.column()
+        column_mapping = self.track_column_mappings[column]
+
+        if role not in column_mapping.get("roles", []):
+            return None
+
+        value = getattr(track, column_mapping["property"], None)
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            value = Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
+
+        return value
+
+    def data_artist(self, index, role=Qt.ItemDataRole.DisplayRole):
+        track = index.parent().internalPointer()
+        artist = track.mbArtistDetails[index.row()]
+        column_mapping = self.artist_column_mappings[index.column()]
+
+        if role not in column_mapping.get("roles", []):
+            return None
+
+        value = getattr(artist, column_mapping["property"], None)
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            value = Qt.CheckState.Checked if value else Qt.CheckState.Unchecked
+
+        return value
+
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        """Writes data back to the underlying data object once an item was modified"""
+        if not index.isValid():
+            return False
+
+        was_edited = False
+
+        if not index.parent().isValid():
+            # items without parents are track objects
+            was_edited = self.setData_track(index, value, role)
+        else:
+            was_edited = self.setData_artist(index, value, role)
+
+        if was_edited:
+            self.dataChanged.emit(index, index, [role])
+            return True
+        return False
+
+    def setData_track(self, index, value, role=Qt.ItemDataRole.EditRole) -> bool:
+        track = self.track_manager.tracks[index.row()]
+        column_mapping = self.track_column_mappings[index.column()]
+
+        if role not in column_mapping.get("roles", []):
+            return False
+
+        setattr(track, column_mapping["property"], value)
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            self.layoutChanged.emit()
+
+        return True
+
+    def setData_artist(self, index, value, role=Qt.ItemDataRole.EditRole) -> bool:
+        track = index.parent().internalPointer()
+        artist = track.mbArtistDetails[index.row()]
+        column_mapping = self.artist_column_mappings[index.column()]
+
+        if role not in column_mapping.get("roles", []):
+            return False
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            value = value == Qt.CheckState.Checked.value
+
+        setattr(artist, column_mapping["property"], value)
+
+        if role == Qt.ItemDataRole.CheckStateRole:
+            self.layoutChanged.emit()
+
+        return True
+
+    def index(self, row, column, parent=QModelIndex()):
+        """Returns the index of the element at the given position and column"""
+        if not parent.isValid():
+            if row < len(self.track_manager.tracks):
+                return self.createIndex(row, column, self.track_manager.tracks[row])
+            return QModelIndex()
+        else:
+            track = parent.internalPointer()
+            if row < len(track.mbArtistDetails):
+                _, track_info = self.get_unique_artist(
+                    track, track.mbArtistDetails[row]
+                )
+                if track_info:
+                    return self.createIndex(row, column, track_info)
+        return QModelIndex()
+
+    def parent(self, index):
+        """Returns the parent of the element at index"""
+        if not index.isValid():
+            return QModelIndex()
+
+        item = index.internalPointer()
+
+        if isinstance(item, dict):  # It's a track-artist mapping
+            track = item["track"]
+            row = self.track_manager.tracks.index(track)
+            return self.createIndex(row, 0, track)
+
+        return QModelIndex()
+
+    def flags(self, index):
+        """Returns the item flags for the specified index, e.g. selectable, editable, checkable"""
+        flags = Qt.ItemFlag.NoItemFlags
+
+        if not index.isValid():
+            return flags
+
+        column = index.column()
+        if not index.parent().isValid():
+            column_mapping = self.track_column_mappings[column]
+        else:
+            column_mapping = self.artist_column_mappings[column]
+
+        for flag in column_mapping.get("flags", []):
+            flags |= flag
+
+        return flags
+
+
+class MainWindow(QMainWindow):
+    stylesheet = "./styles.qss"
+
+    def __init__(self, app, api_host, api_port):
+        super().__init__()
+
+        self.app = app
+        self.is_closing = False
         self.api_host = api_host
         self.api_port = api_port
+        self.track_manager = self.create_track_manager()
 
-        # Set the scaling factor
-        self.root.tk.call("tk", "scaling", 2.0)
+        # Create and start the asyncio event loop
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
 
+        # Use QTimer to periodically run the event loop
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.run_async_tasks)
+        # the loop runs each millisecond, setting the value higher sometimes caused
+        # weird issues where async actions would randomly fail or time out
+        self.timer.start(1)
+
+        self.initUI()
+        self.show()
+        asyncio.ensure_future(self.check_server_health(), loop=self.loop)
+
+        app.exec()
+
+    def apply_styles(self):
         try:
-            self.track_manager = self.create_track_manager()
+            with open(self.stylesheet, "r") as file:
+                self.setStyleSheet(file.read())
         except Exception as e:
             self.show_toast(
-                None, f"Failed to create a TrackManager object: {str(e)}", DANGER
+                f"Error loading stylesheet: {e}",
+                ToastType.ERROR,
             )
-        self.get_server_health()
-        self.setup_ui()
+
+    def initUI(self) -> None:
+        self.toast = None
+        self.setWindowTitle("Track Manager")
+        self.setGeometry(100, 100, 1300, 700)
+
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        self.layout = QVBoxLayout()
+        central_widget.setLayout(self.layout)
+
+        self.track_view = QTreeView(self)
+
+        # Assign the model here to ensure it's created before setting the delegate
+        self.track_model = TrackModel(self.track_manager)
+        self.track_view.setModel(self.track_model)
+        self.track_view.setItemDelegate(ArtistDelegate(self, self.track_model))
+
+        self.layout.addWidget(self.track_view)
+
+        self.add_actions_layout()
+
+        self.clear_data()
+        self.apply_column_width()
+
+        QFontDatabase.addApplicationFont("font/NotoSansJP.ttf")
+        self.app.setStyle("Fusion")
+        self.apply_styles()
+
+    def add_actions_layout(self):
+        # Bottom layout for checkboxes and buttons
+        bottom_layout = QHBoxLayout()
+        checkboxes_layout = self.create_checkboxes_layout()
+        bottom_layout.addLayout(checkboxes_layout)
+
+        buttons_layout = self.create_buttons_layout()
+        bottom_layout.addStretch(1)
+        bottom_layout.addLayout(buttons_layout)
+
+        self.layout.addLayout(bottom_layout)
+
+    def create_checkboxes_layout(self):
+        checkboxes_layout = QGridLayout()
+
+        self.cb_replace_original_title = QCheckBox("Replace original title", self)
+        self.cb_replace_original_title.setChecked(True)
+        checkboxes_layout.addWidget(self.cb_replace_original_title, 0, 0)
+
+        self.cb_overwrite_existing_original_title = QCheckBox(
+            "Overwrite existing values", self
+        )
+        checkboxes_layout.addWidget(self.cb_overwrite_existing_original_title, 1, 0)
+
+        self.cb_replace_original_artist = QCheckBox("Replace original artists", self)
+        self.cb_replace_original_artist.setChecked(True)
+        checkboxes_layout.addWidget(self.cb_replace_original_artist, 0, 1)
+
+        self.cb_overwrite_existing_original_artist = QCheckBox(
+            "Overwrite existing values", self
+        )
+        checkboxes_layout.addWidget(self.cb_overwrite_existing_original_artist, 1, 1)
+
+        return checkboxes_layout
+
+    def create_buttons_layout(self):
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(20)  # Increase horizontal spacing between buttons
+        buttons_layout.setContentsMargins(
+            0, 10, 0, 0
+        )  # Add top margin to move buttons up
+
+        self.btn_save = QPushButton("Save", self)
+        self.btn_save.setFixedSize(90, 30)
+        self.btn_save.clicked.connect(self.save_changes)
+        buttons_layout.addWidget(self.btn_save)
+
+        self.btn_load_files = QPushButton("Select Folder", self)
+        self.btn_load_files.setFixedSize(120, 30)
+        self.btn_load_files.clicked.connect(self.load_directory)
+        buttons_layout.addWidget(self.btn_load_files)
+
+        return buttons_layout
 
     def create_track_manager(self) -> TrackManager:
         try:
             return TrackManager(self.api_host, self.api_port)
         except Exception as e:
             self.show_toast(
-                None, f"Failed to create a TrackManager object: {str(e)}", DANGER
+                f"Failed to create a TrackManager object: {str(e)}", ToastType.ERROR
             )
             return None
 
-    def setup_ui(self):
-        self.root.title("Track Manager")
-        self.root.geometry("1000x600")
-        self.root.minsize(800, 400)
-        self.root.resizable(True, True)
+    def run_async_tasks(self):
+        """Runs pending asyncio tasks."""
+        if not self.is_closing:
+            self.loop.stop()
+            self.loop.run_forever()
 
-        self.setup_layout()
-
-    def setup_layout(self):
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=BOTH, expand=True)
-
-        self.tables_frame = self.setup_tables_frame(main_frame)
-        self.actions_frame = self.setup_actions_frame(main_frame)
-
-    def setup_tables_frame(self, main_frame):
-        tables_frame = ttk.Frame(main_frame)
-        tables_frame.pack(padx=10, pady=10, fill=BOTH, expand=True)
-
-        self.scrolled_frame = ScrolledFrame(
-            tables_frame, bootstyle="primary", autohide=False
-        )
-        self.scrolled_frame.autohide_scrollbar = True
-        self.scrolled_frame.pack(fill=BOTH, expand=True)
-
-        self.tables_inner_frame = ttk.Frame(self.scrolled_frame)
-        self.tables_inner_frame.pack(padx=0, pady=0, fill=BOTH, expand=True)
-
-        return self.tables_inner_frame
-
-    def setup_actions_frame(self, main_frame):
-        actions_frame = ttk.Frame(main_frame)
-        actions_frame.pack(padx=10, pady=10, side=BOTTOM, fill=X)
-
-        # Checkbox for "Replace original title"
-        self.replace_original_title = BooleanVar(value=True)
-        self.cb_replace_original_title = ttk.Checkbutton(
-            actions_frame,
-            text="Replace original title",
-            variable=self.replace_original_title,
-            command=self.toggle_replace_original_title,
-            bootstyle=DEFAULT,
-        )
-
-        self.cb_replace_original_title.grid(row=0, column=0, sticky=W, padx=5, pady=2)
-
-        # Checkbox for "Overwrite existing values" (title)
-        self.overwrite_existing_original_title = BooleanVar(value=False)
-        self.cb_overwrite_existing_original_title = ttk.Checkbutton(
-            actions_frame,
-            text="Overwrite existing values",
-            variable=self.overwrite_existing_original_title,
-            bootstyle=DEFAULT,
-        )
-        self.cb_overwrite_existing_original_title.grid(
-            row=1, column=0, sticky=W, padx=5, pady=2
-        )
-        self.cb_overwrite_existing_original_title.config(state=NORMAL)
-
-        # Checkbox for "Replace original artists"
-        self.replace_original_artist = BooleanVar(value=True)
-        self.cb_replace_original_artist = ttk.Checkbutton(
-            actions_frame,
-            text="Replace original artists",
-            variable=self.replace_original_artist,
-            command=self.toggle_replace_original_artist,
-            bootstyle=DEFAULT,
-        )
-        self.cb_replace_original_artist.grid(row=0, column=1, sticky=W, padx=5, pady=2)
-
-        # Checkbox for "Overwrite existing values" (artist)
-        self.overwrite_existing_original_artist = BooleanVar(value=False)
-        self.cb_overwrite_existing_original_artist = ttk.Checkbutton(
-            actions_frame,
-            text="Overwrite existing values",
-            variable=self.overwrite_existing_original_artist,
-            bootstyle=DEFAULT,
-        )
-        self.cb_overwrite_existing_original_artist.grid(
-            row=1, column=1, sticky=W, padx=5, pady=2
-        )
-        self.cb_overwrite_existing_original_artist.config(state=NORMAL)
-
-        self.btn_save = Button(actions_frame, text="Save", command=self.save_changes)
-        self.btn_save.grid(row=0, column=2, rowspan=2, sticky=E, padx=40, pady=2)
-
-        self.btn_load_files = Button(
-            actions_frame, text="Select Folder", command=self.load_directory
-        )
-        self.btn_load_files.grid(row=0, column=3, rowspan=2, sticky=E, padx=5, pady=2)
-
-        # Make the third column expand to push the buttons to the right
-        actions_frame.grid_columnconfigure(2, weight=1)
-
-        return actions_frame
-
-    def toggle_replace_original_title(self):
-        if self.replace_original_title.get():
-            self.cb_overwrite_existing_original_title.config(state=NORMAL)
-        else:
-            self.cb_overwrite_existing_original_title.config(state=DISABLED)
-            self.overwrite_existing_original_title.set(False)
-
-    def toggle_replace_original_artist(self):
-        if self.replace_original_artist.get():
-            self.cb_overwrite_existing_original_artist.config(state=NORMAL)
-        else:
-            self.cb_overwrite_existing_original_artist.config(state=DISABLED)
-            self.overwrite_existing_original_artist.set(False)
-
-    def show_toast(
-        self,
-        title: str = None,
-        message: str = None,
-        style: ttk.Bootstyle = INFO,
-        duration=3000,
-    ):
-        toast_x = self.root.winfo_x() + ((self.root.winfo_width()) // 2) - 100
-        toast_y = self.root.winfo_y() + (self.root.winfo_height()) - 100
-
-        toast = ToastNotification(
-            icon="",
-            title="",
-            message=message,
-            duration=duration,
-            position=(toast_x, toast_y, "nw"),
-            bootstyle=style,
-        )
-        toast.show_toast()
-
-    @async_run
-    async def get_server_health(self):
+    async def check_server_health(self):
         try:
             api_is_healthy = await self.track_manager.get_server_health()
+
             if not api_is_healthy:
                 self.show_toast(
-                    None,
-                    "The server is not healthy. Please check the server status.",
-                    DANGER,
+                    f"The server is not healthy. Please check the server status.",
+                    ToastType.ERROR,
                 )
         except httpx.RequestError as e:
             self.show_toast(
-                None,
-                f"Could not reach the server at {self.api_host}:{self.api_port}. Please ensure the server is running and try again.\n\nDetails: {str(e)}",
-                DANGER,
+                f"Could not reach the server at {self.api_host}:{self.api_port}: {str(e)}",
+                ToastType.ERROR,
             )
         except Exception as e:
             self.show_toast(
-                None,
                 f"An unexpected error occurred when trying to contact the server: {str(e)}",
-                DANGER,
+                ToastType.ERROR,
             )
 
-    def load_directory(self):
-        directory = filedialog.askdirectory()
+    def save_changes(self) -> None:
+        async def run():
+            try:
+                await self.track_manager.send_changes_to_db()
+            except Exception as e:
+                self.show_toast(
+                    f"An error occurred when sending update data to the server: {str(e)}",
+                    ToastType.ERROR,
+                )
+
+            try:
+                await self.track_manager.save_files()
+                self.show_toast("Metadata saved successfully!", ToastType.SUCCESS)
+            except Exception as e:
+                self.show_toast(
+                    f"An error occurred when updating the files: {str(e)}",
+                    ToastType.ERROR,
+                )
+
+        asyncio.ensure_future(run(), loop=self.loop)
+
+    def load_directory(self) -> None:
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Directory",
+            "C:/Users/email_000/Desktop/music/sample/spiceandwolf",
+        )
         if directory:
-            self.track_manager = self.create_track_manager()
-            self.get_server_health()
-            self.load_and_update_directory(directory)
 
-    @async_run
-    async def load_and_update_directory(self, directory):
-        try:
-            await self.track_manager.load_directory(directory)
-        except Exception as e:
-            self.show_toast(
-                None,
-                f"An error occurred when reading directory {directory}:{str(e)}",
-                DANGER,
-            )
-
-        try:
-            await self.track_manager.update_artists_info_from_db()
-        except Exception as e:
-            self.show_toast(
-                None,
-                f"An error occurred querying the server for information:{str(e)}",
-                DANGER,
-            )
-
-        if self.replace_original_title:
-            self.track_manager.replace_original_title(
-                self.overwrite_existing_original_title
-            )
-
-        if self.overwrite_existing_original_artist:
-            self.track_manager.replace_original_artist(self.replace_original_artist)
-
-        self.create_track_tables(self.tables_frame)
-
-    def create_track_tables(self, master):
-        if not hasattr(self, "treeviews"):
-            self.treeviews = {}
-
-        self.clear_existing_track_frames(master)
-
-        for track in self.track_manager.tracks:
-            frame = ttk.Frame(master)
-            frame.pack(expand=True, fill=BOTH, padx=10, pady=5)
-
-            self.populate_track_info(frame, track)
-            tree = self.create_treeview(frame, track)
-            self.treeviews[track] = tree  # Store the treeview for later updates
-            self.populate_treeview(tree, track)
-
-        # Update the artist labels
-        self.update_artist_labels()
-
-    def clear_existing_track_frames(self, master):
-        for widget in master.winfo_children():
-            widget.destroy()
-
-    def populate_track_info(self, master, track):
-        frame = ttk.Frame(master)
-        frame.pack(expand=True, fill=BOTH, padx=10, pady=10)
-
-        # Use grid for alignment
-        frame.grid_columnconfigure(0, weight=1)
-        frame.grid_columnconfigure(1, weight=1)
-
-        custom_font = ("Helvetica", 12, "bold")
-        update_file = BooleanVar(value=track.update_file)
-        cb_update_file = Checkbutton(
-            frame,
-            text=f"{track.title}",
-            variable=update_file,
-            command=lambda t=track, v=update_file: self.update_update_file(t, v),
-            font=custom_font,
-            fg="blue",  # Font color
-            padx=1,
-            pady=1,
-        )
-
-        cb_update_file.grid(column=0, row=0, sticky=W)
-
-        label_current_track_artist = Label(
-            frame, text=f"{'; '.join(track.artist)}", pady=1
-        )
-        label_current_track_artist.grid(column=1, row=0, sticky=W)
-
-        label_new_track_artist = Label(
-            frame, text=f"{track.get_artist_string()}", pady=1
-        )
-        label_new_track_artist.grid(column=0, row=2, sticky=W)
-
-        # Store references to the labels in the track object for later updating
-        track.cb_update_file = cb_update_file
-        track.label_current_track_artist = label_current_track_artist
-        track.label_new_track_artist = label_new_track_artist
-
-    def create_treeview(self, frame, track):
-        tree = ttk.Treeview(
-            frame,
-            columns=tuple(self.data_mapping.keys()),
-            show="headings",
-            bootstyle=DARK,
-        )
-
-        num_rows = len(track.mbArtistDetails)
-
-        tree.pack(expand=True, fill=X, padx=10, pady=10)
-        tree["height"] = num_rows
-
-        display_columns = [
-            column_id
-            for column_id, settings in self.data_mapping.items()
-            if settings.get("display", False)
-        ]
-        tree["displaycolumns"] = display_columns
-
-        for column_id, settings in self.data_mapping.items():
-            tree.heading(column_id, text=settings["display_name"])
-            tree.column(column_id, width=settings["width"])
-
-        # Define the tag for red-colored cells
-        tree.tag_configure("red_font", foreground="red")
-
-        tree.bind("<Button-1>", self.on_single_click)
-        tree.bind("<Double-1>", self.on_double_click)
-
-        # Initialize the mapping dictionary for this treeview
-        tree.item_to_object = {}
-
-        return tree
-
-    def populate_treeview(self, tree, track):
-        try:
-            existing_items = tree.get_children()
-        except ttk.TclError:
-            # If the treeview no longer exists, return early
-            return
-
-        item_to_row_id = {
-            tree.item_to_object[row]["artist_detail"]: row for row in existing_items
-        }
-
-        for artist_detail in track.mbArtistDetails:
-            values = self.get_treeview_row_values(track, artist_detail)
-            if artist_detail in item_to_row_id:
-                row_id = item_to_row_id[artist_detail]
-                for column_id, value in zip(self.data_mapping.keys(), values):
-                    if column_id == "include":
-                        value = "☑" if value else "☐"
-                    tree.set(row_id, column_id, value)
-            else:
-                row_id = tree.insert("", "end", values=tuple(values))
-                tree.item_to_object[row_id] = {
-                    "track": track,
-                    "artist_detail": artist_detail,
-                }
-                if ("include" in self.data_mapping
-                        and self.data_mapping["include"]["source_object"] == "mbartist_details"):
-                    tree.set(row_id, "include", "☑" if artist_detail.include else "☐")
-
-            # Apply the red cell tag to the custom_name column if the condition is met
-            custom_name = artist_detail.custom_name
-            artist_name = artist_detail.name
-            if custom_name != artist_name:
-                tree.item(row_id, tags=("red_font",))
-
-        self.enforce_column_widths(tree)
-
-    def enforce_column_widths(self, tree):
-        for column_id, settings in self.data_mapping.items():
-            match column_id:
-                case "include":
-                    tree.column(column_id, minwidth=30, stretch=False)
-                case "type":
-                    tree.column(column_id, minwidth=70, stretch=False)
-                case _:
-                    tree.column(column_id, minwidth=70, stretch=True)
-
-    def get_treeview_row_values(self, track, artist_detail):
-        values = []
-        for column_id, settings in self.data_mapping.items():
-            if settings["source_object"] == "track_details":
-                value = getattr(track, settings["property"], "")
-            else:
-                value = getattr(artist_detail, settings["property"], "")
-            if column_id == "include":
-                value = "☑" if value else "☐"
-            values.append(value)
-        return values
-
-    def update_update_file(self, track, var):
-        new_value = var.get()
-        if track.update_file != new_value:
-            track.update_file = new_value
-
-    @async_run
-    async def save_changes(self):
-        try:
-            await self.track_manager.send_changes_to_db()
-        except Exception as e:
-            self.show_toast(
-                None,
-                f"An error occurred when sending update data to the server:{str(e)}",
-                DANGER,
-            )
-
-        try:
-            await self.track_manager.save_files()
-            self.show_toast(None, "Metadata saved successfully!", SUCCESS)
-        except Exception as e:
-            self.show_toast(
-                None, f"An error occurred when updating the files:{str(e)}", DANGER
-            )
-
-        self.create_track_tables(self.tables_frame)
-
-    def get_clicked_cell(self, event, tree):
-        region = tree.identify("region", event.x, event.y)
-
-        if region != "cell":
-            return None
-
-        return {
-            "row": tree.identify_row(event.y),
-            "column": tree.identify_column(event.x),
-        }
-
-    def on_canvas_configure(self, e):
-        self.tables_canvas.itemconfig(self.tables_canvas_window, width=e.width)
-
-    def on_inner_frame_configure(self, e):
-        self.tables_canvas.configure(scrollregion=self.tables_canvas.bbox("all"))
-
-    def on_mousewheel(self, event):
-        self.tables_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-    def on_single_click(self, event):
-        tree = event.widget
-        clicked = self.get_clicked_cell(event, tree)
-        if clicked is None:
-            return
-
-        if tree.column(clicked["column"])["id"] == "include":
-            row_track = tree.item_to_object.get(clicked["row"])
-            if row_track is None:
-                raise Exception("Row has no track details.")
-
-            current_value = tree.set(clicked["row"], clicked["column"])
-            new_value = False if current_value == "☑" else True
-
-            value_changed = self.save_value_to_manager(
-                new_value,
-                tree.column(clicked["column"])["id"],
-                row_track["track"],
-                row_track["artist_detail"],
-            )
-            if value_changed:
-                display_value = "☑" if new_value else "☐"
-                tree.set(clicked["row"], clicked["column"], display_value)
-
-    def on_double_click(self, event):
-        tree = event.widget
-        clicked = self.get_clicked_cell(event, tree)
-        if clicked is None:
-            return
-
-        if self.data_mapping[tree.column(clicked["column"])["id"]]["editable"] is True:
-            self.edit_cell(clicked["row"], clicked["column"], event, tree)
-
-    def edit_cell(self, row, column, event, tree):
-        x, y, w, h = tree.bbox(row, column)
-
-        entry = Entry(tree)
-        entry.place(x=x, y=y, width=w, height=h)
-        entry.insert(END, tree.set(row, column))
-        entry.focus_set()
-        entry.select_range(0, END)
-
-        def save_new_value(event):
-            new_value = entry.get()
-            tree.set(row, column=column, value=new_value)
-            entry.destroy()
-
-            row_track = tree.item_to_object.get(row)
-            if row_track is None:
-                raise Exception("Row has no track details.")
-
-            value_changed = self.save_value_to_manager(
-                new_value,
-                tree.column(column)["id"],
-                row_track["track"],
-                row_track["artist_detail"],
-            )
-
-            if value_changed:
-                self.create_track_tables(self.tables_inner_frame)
-
-        def close_without_saving(event):
-            entry.destroy()
-
-        entry.bind("<Return>", save_new_value)
-        entry.bind("<FocusOut>", save_new_value)
-        entry.bind("<Escape>", close_without_saving)
-
-    def save_value_to_manager(
-        self, new_value, column_id: str, track_details, mbartist_details
-    ) -> bool:
-        if column_id not in self.data_mapping:
-            raise Exception(f"column id {column_id} was not found in data mapping.")
-
-        # Retrieve the object and attribute name
-        mapping = self.data_mapping[column_id]
-        if mapping["source_object"] == "track_details":
-            source_obj = track_details
-        else:
-            source_obj = mbartist_details
-
-        current_value = getattr(source_obj, mapping["property"])
-
-        if new_value == current_value:
-            return False
-
-        # Update the value
-        setattr(source_obj, mapping["property"], new_value)
-
-        # Update the relevant treeview items
-        for track, tree in self.treeviews.items():
-            for row_id, obj in tree.item_to_object.items():
-                if obj["artist_detail"] == mbartist_details:
-                    display_value = (
-                        "☑"
-                        if new_value and column_id == "include"
-                        else (
-                            "☐"
-                            if not new_value and column_id == "include"
-                            else new_value
-                        )
+            async def load_and_update():
+                self.clear_data()
+                await self.check_server_health()
+
+                try:
+                    await self.track_manager.load_directory(directory)
+                except Exception as e:
+                    self.show_toast(
+                        f"An error occurred when reading directory {directory}: {str(e)}",
+                        ToastType.ERROR,
                     )
-                    tree.set(row_id, column_id, display_value)
+                try:
+                    await self.track_manager.update_artists_info_from_db()
+                except Exception as e:
+                    self.show_toast(
+                        f"An error occurred querying the server for information: {str(e)}",
+                        ToastType.ERROR,
+                    )
 
-        # Update the artist labels
-        self.update_artist_labels()
+                if self.cb_replace_original_title.isChecked():
+                    self.track_manager.replace_original_title(
+                        overwrite=self.cb_overwrite_existing_original_title.isChecked()
+                    )
 
-        return True
+                if self.cb_replace_original_artist.isChecked():
+                    self.track_manager.replace_original_artist(
+                        overwrite=self.cb_overwrite_existing_original_artist.isChecked()
+                    )
 
-    def update_artist_labels(self):
-        for track in self.track_manager.tracks:
-            # Update each label with the current artist information
-            current_artists = "; ".join(track.artist)
-            new_artists = track.get_artist_string()
+                self.track_model.create_unique_artist_index()
+                self.track_view.expandAll()
 
-            track.cb_update_file.config(text=f"{track.title}")
-            track.label_current_track_artist.config(text=f"{current_artists}")
-            track.label_new_track_artist.config(text=f"{new_artists}")
+            asyncio.ensure_future(load_and_update(), loop=self.loop)
 
-    def run_sync(self, async_func, *args, **kwargs):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(async_func(*args, **kwargs))
+    def clear_data(self) -> TrackModel:
+        self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
+        self.track_model = TrackModel(self.track_manager)
+        self.track_view.setModel(self.track_model)
+
+    def show_toast(self, message: str, toast_type: ToastType) -> None:
+        if self.toast and self.toast.isVisible():
+            self.toast.hide()
+
+        self.toast = Toast(message, toast_type=toast_type, parent=self)
+        self.toast.update_position(self.geometry())
+        self.toast.show()
+
+    def apply_column_width(self) -> None:
+        for i in range(len(self.track_model.header_names)):
+            self.track_view.setColumnWidth(i, self.track_model.columnWidth(i))
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Delete:
+            selected_indexes = self.track_view.selectedIndexes()
+            if selected_indexes:
+                selected_index = selected_indexes[0]
+                if selected_index.isValid():
+                    track_item = selected_index.internalPointer()
+                    if isinstance(track_item, TrackDetails):
+                        self.track_manager.remove_track(track_item)
+                        self.track_model.layoutChanged.emit()
+
+    def moveEvent(self, event):
+        if self.toast and self.toast.isVisible():
+            self.toast.update_position(self.geometry())
+
+    def resizeEvent(self, event):
+        if self.toast and self.toast.isVisible():
+            self.toast.update_position(self.geometry())
+
+    def closeEvent(self, event):
+        """Handle the window close event to stop the asyncio event loop and exit the application."""
+        self.is_closing = True
+        self.timer.stop()
+        self.loop.stop()
+        self.loop.close()
+        self.app.quit()
 
 
 def main():
@@ -756,9 +668,22 @@ def main():
     api_host = args.host if args.host else os.getenv("ARTIST_RESOLVER_HOST", None)
     api_port = args.port if args.port else os.getenv("ARTIST_RESOLVER_PORT", None)
 
-    root = ttk.Window(themename="darkly")
-    TrackManagerGUI(root, api_host, api_port)
-    root.mainloop()
+    sys._excepthook = sys.excepthook
+
+    def exception_hook(exctype, value, traceback):
+        print(exctype, value, traceback)
+        sys._excepthook(exctype, value, traceback)
+        sys.exit(1)
+
+    sys.excepthook = exception_hook
+
+    app = QApplication(sys.argv)
+    main_window = MainWindow(app, api_host, api_port)
+
+    try:
+        main_window.loop.run_forever()
+    except RuntimeError as e:
+        print(f"Caught RuntimeError when the loop was closed: {e}")
 
 
 if __name__ == "__main__":
