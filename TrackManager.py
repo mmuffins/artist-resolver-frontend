@@ -1,10 +1,3 @@
-# TODO: check if aliases can be used for better naming predictions
-# TODO: Infer album artist from file path
-# TODO: colors -> grey out rows where included is disabled
-# TODO: colors -> grey out table where update file is disabled
-# TODO: colors -> have specific color for values loaded from the db
-# TODO: colors -> highlight colors that are different from the current id tag / were edited
-
 import hashlib
 import os
 import re
@@ -83,6 +76,7 @@ class MbArtistDetails:
         self.type_id = type_id
         self.joinphrase = joinphrase
         self.custom_name = sort_name
+        self.unedited_custom_name = self.custom_name
         self.custom_original_name = name
         self.id: int = id
         self.updated_from_server: bool = False
@@ -92,6 +86,14 @@ class MbArtistDetails:
 
     def __repr__(self):
         return f"{self.name}"
+
+    @property
+    def custom_name_edited(self) -> bool:
+        """
+        Returns true if the custom_name property was edited
+        """
+
+        return self.custom_name != self.unedited_custom_name
 
     @property
     def formatted_artist(self) -> str:
@@ -111,6 +113,7 @@ class MbArtistDetails:
         """
         self.include = data["include"]
         self.custom_name = data["name"]
+        self.unedited_custom_name = self.custom_name
         self.custom_original_name = data["originalName"]
         self.id = data["id"]
         self.updated_from_server = True
@@ -239,6 +242,7 @@ class SimpleArtistDetails(MbArtistDetails):
         )
 
         simple_artist.custom_name = artist["name"]
+        simple_artist.unedited_custom_name = simple_artist.custom_name
         simple_artist.custom_original_name = None
 
         return simple_artist
@@ -249,6 +253,7 @@ class SimpleArtistDetails(MbArtistDetails):
         """
 
         self.custom_name = data["artist"]
+        self.unedited_custom_name = self.custom_name
         self.custom_original_name = data["name"]
         self.id = data["artistId"]
         self.updated_from_server = True

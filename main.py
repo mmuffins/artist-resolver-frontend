@@ -44,10 +44,21 @@ class ArtistDelegate(QStyledItemDelegate):
             track = index.parent().internalPointer()
             artist = track.mbArtistDetails[index.row()]
 
+            if not artist.include:
+                # grey out entire line if the artist is not included
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(95, 95, 95))
+
+            if column == self.custom_name_column and not artist.custom_name_edited:
+                # set to red if the artist was not edited
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 23, 62))
+
             if column == self.custom_name_column and artist.updated_from_server:
-                option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
-            elif not artist.include:
-                option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+                # set to purple if artist was updated from server
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(164, 97, 240))
+
+            if column == self.custom_name_column and artist.custom_name_edited:
+                # set to green if the artist was edited
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(58, 235, 157))
 
         super().paint(painter, option, index)
 
@@ -420,9 +431,9 @@ class MainWindow(QMainWindow):
         self.track_view.setItemDelegate(ArtistDelegate(self, self.track_model))
 
         # workaround because setting the color for checkbox currently has a bug with stylesheets
-        treeview_palette = QPalette()
-        treeview_palette.setColor(QPalette.ColorRole.Window, QColor(255, 255, 255))
-        self.track_view.setPalette(treeview_palette)
+        # treeview_palette = QPalette()
+        # treeview_palette.setColor(QPalette.ColorRole.Window, QColor(255, 255, 255))
+        # self.track_view.setPalette(treeview_palette)
 
         self.layout.addWidget(self.track_view)
 
