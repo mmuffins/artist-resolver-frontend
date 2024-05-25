@@ -6,7 +6,7 @@ import httpx
 from Toast import Toast, ToastType
 from TrackManager import TrackManager, TrackDetails
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
-from PyQt6.QtGui import QKeyEvent, QPalette, QColor
+from PyQt6.QtGui import QKeyEvent, QPalette, QColor, QPainter
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -18,7 +18,38 @@ from PyQt6.QtWidgets import (
     QTreeView,
     QHBoxLayout,
     QGridLayout,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
 )
+
+
+class ArtistDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None, model=None):
+        super().__init__(parent)
+        self.model = model
+        self.custom_name_column = self.get_custom_name_column()
+
+    def get_custom_name_column(self):
+        for i, column in enumerate(self.model.artist_column_mappings):
+            if column["property"] == "custom_name":
+                return i
+        return -1
+
+    def paint(
+        self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex
+    ):
+        column = index.column()
+
+        if index.parent().isValid():  # This is an artist item
+            track = index.parent().internalPointer()
+            artist = track.mbArtistDetails[index.row()]
+
+            if column == self.custom_name_column and artist.updated_from_server:
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+            elif not artist.include:
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+
+        super().paint(painter, option, index)
 
 
 class TrackModel(QAbstractItemModel):
@@ -382,6 +413,11 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(self.layout)
 
         self.track_view = QTreeView(self)
+
+        # Assign the model here to ensure it's created before setting the delegate
+        self.track_model = TrackModel(self.track_manager)
+        self.track_view.setModel(self.track_model)
+        self.track_view.setItemDelegate(ArtistDelegate(self, self.track_model))
 
         # workaround because setting the color for checkbox currently has a bug with stylesheets
         treeview_palette = QPalette()
