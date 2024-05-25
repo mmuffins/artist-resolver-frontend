@@ -6,7 +6,7 @@ import httpx
 from Toast import Toast, ToastType
 from TrackManager import TrackManager, TrackDetails
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
-from PyQt6.QtGui import QKeyEvent, QPalette, QColor, QPainter
+from PyQt6.QtGui import QKeyEvent, QPalette, QColor, QPainter, QFontDatabase
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -445,6 +445,7 @@ class MainWindow(QMainWindow):
         self.clear_data()
         self.apply_column_width()
 
+        QFontDatabase.addApplicationFont("font/NotoSansJP.ttf")
         self.app.setStyle("Fusion")
         self.apply_styles()
 
