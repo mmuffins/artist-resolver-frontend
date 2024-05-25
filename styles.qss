@@ -38,3 +38,30 @@ QMainWindow {
 * {
     font-size: 16px;
 }
+
+.toast {
+    color: white;
+    padding: 20px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.toast-error {
+    background-color: red;
+}
+
+.toast-warning {
+    background-color: orange;
+}
+
+.toast-information {
+    background-color: blue;
+}
+
+.toast-success {
+    background-color: green;
+}

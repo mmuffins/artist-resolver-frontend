@@ -23,6 +23,8 @@ class ToastType(Enum):
 
 
 class Toast(QWidget):
+    stylesheet = "./styles.qss"
+
     def __init__(
         self, message, toast_type=ToastType.INFORMATION, duration=3000, parent=None
     ):
@@ -76,27 +78,29 @@ class Toast(QWidget):
         self.animation_group.addAnimation(self.fade_out)
         self.animation_group.finished.connect(self.hide)
 
+    def apply_styles(self):
+        try:
+            with open(self.stylesheet, "r") as file:
+                style_sheet = file.read()
+                self.setStyleSheet(style_sheet)
+                self.app.setStyleSheet(style_sheet)
+        except Exception as e:
+            print(f"Error loading stylesheet: {e}")
+
     def set_toast_color(self):
-        base_stylesheet = """
-            color: white;
-            padding: 20px;
-            border-top-left-radius: 5px;
-            border-top-right-radius: 5px;
-            border-bottom-left-radius: 5px;
-            border-bottom-right-radius: 5px;
-            font-size: 16px;
-            font-weight: bold;
-        """
+        base_class = "toast"
 
         match self.toast_type:
             case ToastType.ERROR:
-                self.label.setStyleSheet(f"background-color: red; {base_stylesheet}")
+                self.label.setProperty("class", f"{base_class} toast-error")
             case ToastType.WARNING:
-                self.label.setStyleSheet(f"background-color: orange; {base_stylesheet}")
+                self.label.setProperty("class", f"{base_class} toast-warning")
             case ToastType.INFORMATION:
-                self.label.setStyleSheet(f"background-color: blue; {base_stylesheet}")
+                self.label.setProperty("class", f"{base_class} toast-information")
             case ToastType.SUCCESS:
-                self.label.setStyleSheet(f"background-color: green; {base_stylesheet}")
+                self.label.setProperty("class", f"{base_class} toast-success")
+
+        self.label.setStyleSheet("")  # Apply the style
 
     def showEvent(self, event):
         self.animation_group.start()
