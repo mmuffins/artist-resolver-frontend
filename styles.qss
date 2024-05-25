@@ -4,10 +4,11 @@
 }
 
 QPushButton {
-    min-width: 85px;
-    min-height: 25px;
-    font-size: 16px;
     background-color: rgb(62, 62, 64);
+    font-size: 12px;
+
+    border : solid rgb(8, 114, 186);
+    border-width: 1px 1px 1px 1px;
 }
 
 QPushButton:hover {
@@ -28,6 +29,10 @@ QPushButton:pressed {
  with a solid color 
  */
  
+QCheckBox {
+    font-size: 12px;
+}
+
 QCheckBox::indicator {
     width: 16px;
     height: 16px;

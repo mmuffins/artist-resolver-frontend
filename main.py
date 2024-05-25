@@ -492,10 +492,12 @@ class MainWindow(QMainWindow):
         )  # Add top margin to move buttons up
 
         self.btn_save = QPushButton("Save", self)
+        self.btn_save.setFixedSize(90, 30)
         self.btn_save.clicked.connect(self.save_changes)
         buttons_layout.addWidget(self.btn_save)
 
         self.btn_load_files = QPushButton("Select Folder", self)
+        self.btn_load_files.setFixedSize(120, 30)
         self.btn_load_files.clicked.connect(self.load_directory)
         buttons_layout.addWidget(self.btn_load_files)
 
