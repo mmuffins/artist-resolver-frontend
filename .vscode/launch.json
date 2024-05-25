@@ -12,25 +12,6 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "TrackManager",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/TrackManager.py",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Run gui",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/main_old.py",
-      "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "args": [
-        "--host", "localhost"
-        ,"--port", "23409"
-      ],
-    },
-    {
       "name": "PyQt",
       "type": "debugpy",
       "request": "launch",
@@ -40,16 +21,6 @@
       "args": [
         "--host", "localhost"
         ,"--port", "23409"
-      ],
-    },
-
-    {
-      "name": "Debug Unit Tests",
-      "type": "debugpy",
-      "request": "launch",
-      "module": "pytest",
-      "args": [
-        "tests"
       ],
     },
   ]
