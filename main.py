@@ -333,6 +333,8 @@ class TrackModel(QAbstractItemModel):
 
 
 class MainWindow(QMainWindow):
+    stylesheet = "./styles.qss"
+
     def __init__(self, app, api_host, api_port):
         super().__init__()
 
@@ -359,50 +361,14 @@ class MainWindow(QMainWindow):
         app.exec()
 
     def apply_styles(self):
-        self.setStyleSheet(
-            """
-            QPushButton {
-                min-width: 85px;
-                min-height: 25px;
-                font-size: 16px;
-                background-color: rgb(62, 62, 64);
-            }
-            QPushButton:hover {
-                border : solid rgb(8, 114, 186);
-                border-width: 1px 1px 1px 1px;
-                background-color: rgb(62, 62, 64);
-                color: rgb(38, 144, 216);
-            }
-            QTreeView {
-                border : solid red;
-                border-width: 0px 0px 0px 0px;
-                font-size: 16px;
-            }
-            QHeaderView::section {
-                background-color: rgb(51, 51, 55);
-            }
-            QTreeView::item {
-                margin: 0px 0px;
-                min-height: 30px;
-            }
-            QTreeView::indicator {
-                width: 20px;
-                height: 20px;
-            }
-            QTreeView::item:selected {
-                background-color: rgb(38, 79, 120);
-            }
-            QTreeView::item:hover {
-                background-color: rgb(62, 62, 66);
-            }
-            QMainWindow {
-                background-color: rgb(30, 30, 30);
-            }
-            * {
-                font-size: 16px;
-            }
-        """
-        )
+        try:
+            with open(self.stylesheet, "r") as file:
+                self.setStyleSheet(file.read())
+        except Exception as e:
+            self.show_toast(
+                f"Error loading stylesheet: {e}",
+                ToastType.ERROR,
+            )
 
     def initUI(self) -> None:
         self.toast = None
