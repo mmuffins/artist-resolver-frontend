@@ -36,7 +36,7 @@ $ENV:ARTIST_RESOLVER_PORT = "80"
 python -m main
 ```
 
-The project root contains a run.ps1 which verifies that all dependencies are installed and then runs the python script. Note that this expects the correct environment variables to be set:
+The project root contains a run.ps1 which runs the python script. Dependencies still need to be installed manually. Note that this expects the correct environment variables to be set:
 
 ```powershell 
 $ENV:ARTIST_RESOLVER_HOST = "endpoint.com"
