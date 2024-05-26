@@ -581,6 +581,10 @@ class MainWindow(QMainWindow):
     def load_files(self, files: list[str]) -> None:
         async def load_and_update():
             await self.check_server_health()
+            # the proper implementation would use beginInsertRows in the track model,
+            # but that crashes randomly and I can't figure out why,
+            # so just resetting the view is easier and has only very minor side effects
+            self.track_model.beginResetModel()
 
             try:
                 await self.track_manager.load_files(files)
@@ -608,6 +612,7 @@ class MainWindow(QMainWindow):
                 )
 
             self.track_model.create_unique_artist_index()
+            self.track_model.endResetModel()
             self.track_view.expandAll()
 
         asyncio.ensure_future(load_and_update(), loop=self.loop)
