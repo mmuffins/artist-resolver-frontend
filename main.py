@@ -6,7 +6,15 @@ import httpx
 from Toast import Toast, ToastType
 from artist_resolver.trackmanager import TrackManager, TrackDetails
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
-from PyQt6.QtGui import QKeyEvent, QPalette, QColor, QPainter, QFontDatabase
+from PyQt6.QtGui import (
+    QKeyEvent,
+    QPalette,
+    QColor,
+    QPainter,
+    QFontDatabase,
+    QDragEnterEvent,
+    QDropEvent,
+)
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -449,6 +457,8 @@ class MainWindow(QMainWindow):
         self.app.setStyle("Fusion")
         self.apply_styles()
 
+        self.setAcceptDrops(True)
+
     def add_actions_layout(self):
         # Bottom layout for checkboxes and buttons
         bottom_layout = QHBoxLayout()
@@ -496,9 +506,9 @@ class MainWindow(QMainWindow):
         self.btn_save.clicked.connect(self.save_changes)
         buttons_layout.addWidget(self.btn_save)
 
-        self.btn_load_files = QPushButton("Select Folder", self)
+        self.btn_load_files = QPushButton("Load Files", self)
         self.btn_load_files.setFixedSize(120, 30)
-        self.btn_load_files.clicked.connect(self.load_directory)
+        self.btn_load_files.clicked.connect(self.load_files_dialog)
         buttons_layout.addWidget(self.btn_load_files)
 
         return buttons_layout
@@ -559,47 +569,47 @@ class MainWindow(QMainWindow):
 
         asyncio.ensure_future(run(), loop=self.loop)
 
-    def load_directory(self) -> None:
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "Select Directory",
-            "C:/Users/email_000/Desktop/music/sample/spiceandwolf",
+    def load_files(self, files: list[str]) -> None:
+        async def load_and_update():
+            await self.check_server_health()
+
+            try:
+                await self.track_manager.load_files(files)
+            except Exception as e:
+                self.show_toast(
+                    f"An error occurred when reading files: {str(e)}",
+                    ToastType.ERROR,
+                )
+            try:
+                await self.track_manager.update_artists_info_from_db()
+            except Exception as e:
+                self.show_toast(
+                    f"An error occurred querying the server for information: {str(e)}",
+                    ToastType.ERROR,
+                )
+
+            if self.cb_replace_original_title.isChecked():
+                self.track_manager.replace_original_title(
+                    overwrite=self.cb_overwrite_existing_original_title.isChecked()
+                )
+
+            if self.cb_replace_original_artist.isChecked():
+                self.track_manager.replace_original_artist(
+                    overwrite=self.cb_overwrite_existing_original_artist.isChecked()
+                )
+
+            self.track_model.create_unique_artist_index()
+            self.track_view.expandAll()
+
+        asyncio.ensure_future(load_and_update(), loop=self.loop)
+
+    def load_files_dialog(self) -> None:
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Select Files", "", "MP3 Files (*.mp3)"
         )
-        if directory:
-
-            async def load_and_update():
-                self.clear_data()
-                await self.check_server_health()
-
-                try:
-                    await self.track_manager.load_directory(directory)
-                except Exception as e:
-                    self.show_toast(
-                        f"An error occurred when reading directory {directory}: {str(e)}",
-                        ToastType.ERROR,
-                    )
-                try:
-                    await self.track_manager.update_artists_info_from_db()
-                except Exception as e:
-                    self.show_toast(
-                        f"An error occurred querying the server for information: {str(e)}",
-                        ToastType.ERROR,
-                    )
-
-                if self.cb_replace_original_title.isChecked():
-                    self.track_manager.replace_original_title(
-                        overwrite=self.cb_overwrite_existing_original_title.isChecked()
-                    )
-
-                if self.cb_replace_original_artist.isChecked():
-                    self.track_manager.replace_original_artist(
-                        overwrite=self.cb_overwrite_existing_original_artist.isChecked()
-                    )
-
-                self.track_model.create_unique_artist_index()
-                self.track_view.expandAll()
-
-            asyncio.ensure_future(load_and_update(), loop=self.loop)
+        if files:
+            self.clear_data()
+            self.load_files(files)
 
     def clear_data(self) -> TrackModel:
         self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
@@ -644,6 +654,26 @@ class MainWindow(QMainWindow):
         self.loop.stop()
         self.loop.close()
         self.app.quit()
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        urls = event.mimeData().urls()
+        files = []
+        for url in urls:
+            local_path = url.toLocalFile()
+            if os.path.isdir(local_path):
+                for root, _, filenames in os.walk(local_path):
+                    for filename in filenames:
+                        if filename.lower().endswith(".mp3"):
+                            files.append(os.path.join(root, filename))
+            elif os.path.isfile(local_path) and local_path.lower().endswith(".mp3"):
+                files.append(local_path)
+
+        if files:
+            self.load_files(files)
 
 
 def main():
