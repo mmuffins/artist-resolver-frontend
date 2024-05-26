@@ -203,7 +203,7 @@ class TrackModel(QAbstractItemModel):
         for index, track_info in enumerate(self.track_index):
             if track_info["track"] == track:
                 indices_to_remove.append(index)
-        
+
         # Remove the indices in reverse order to avoid indexing issues
         for index in reversed(indices_to_remove):
             del self.track_index[index]
@@ -377,7 +377,7 @@ class TrackModel(QAbstractItemModel):
 
         item = index.internalPointer()
 
-        if isinstance(item, dict):  # It's a track-artist mapping
+        if isinstance(item, dict) and "track" in item:  # It's a track-artist mapping
             track = item["track"]
             row = self.track_manager.tracks.index(track)
             return self.createIndex(row, 0, track)
@@ -539,7 +539,7 @@ class MainWindow(QMainWindow):
     def run_async_tasks(self):
         """Runs pending asyncio tasks."""
         if not self.is_closing:
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
             self.loop.run_forever()
 
     async def check_server_health(self):
@@ -586,7 +586,6 @@ class MainWindow(QMainWindow):
     def load_files(self, files: list[str]) -> None:
         async def load_and_update():
             await self.check_server_health()
-            self.clear_data()
 
             try:
                 await self.track_manager.load_files(files)
@@ -651,8 +650,13 @@ class MainWindow(QMainWindow):
                 if selected_index.isValid():
                     track_item = selected_index.internalPointer()
                     if isinstance(track_item, TrackDetails):
+                        # I never made removing individual rows work without crashing the application
+                        # so this is the next best thing
+                        self.track_model.beginResetModel()
                         self.track_manager.remove_track(track_item)
-                        self.track_model.layoutChanged.emit()
+                        self.track_model.create_unique_artist_index()
+                        self.track_model.endResetModel()
+                        self.track_view.expandAll()
 
     def moveEvent(self, event):
         if self.toast and self.toast.isVisible():
