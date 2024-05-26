@@ -199,17 +199,12 @@ class TrackModel(QAbstractItemModel):
 
     def remove_track(self, track):
         """Removes a track from the trackmodel image and the track manager"""
-        indices_to_remove = []
-        for index, track_info in enumerate(self.track_index):
-            if track_info["track"] == track:
-                indices_to_remove.append(index)
-
-        # Remove the indices in reverse order to avoid indexing issues
-        for index in reversed(indices_to_remove):
-            del self.track_index[index]
-
+        # I never made removing individual rows work without crashing the application
+        # so this is the next best thing
+        self.beginResetModel()
         self.track_manager.remove_track(track)
-        return True
+        self.create_unique_artist_index()
+        self.endResetModel()
 
     def create_unique_artist_index(self):
         """
@@ -650,12 +645,7 @@ class MainWindow(QMainWindow):
                 if selected_index.isValid():
                     track_item = selected_index.internalPointer()
                     if isinstance(track_item, TrackDetails):
-                        # I never made removing individual rows work without crashing the application
-                        # so this is the next best thing
-                        self.track_model.beginResetModel()
-                        self.track_manager.remove_track(track_item)
-                        self.track_model.create_unique_artist_index()
-                        self.track_model.endResetModel()
+                        self.track_model.remove_track(track_item)
                         self.track_view.expandAll()
 
     def moveEvent(self, event):
