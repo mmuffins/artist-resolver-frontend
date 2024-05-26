@@ -6,7 +6,15 @@ import httpx
 from Toast import Toast, ToastType
 from artist_resolver.trackmanager import TrackManager, TrackDetails
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
-from PyQt6.QtGui import QKeyEvent, QPalette, QColor, QPainter, QFontDatabase
+from PyQt6.QtGui import (
+    QKeyEvent,
+    QPalette,
+    QColor,
+    QPainter,
+    QFontDatabase,
+    QDragEnterEvent,
+    QDropEvent,
+)
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -59,7 +67,7 @@ class ArtistDelegate(QStyledItemDelegate):
                 # set to red if the artist was not edited
                 option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 23, 62))
 
-            if column == self.custom_name_column and artist.updated_from_server:
+            if column == self.custom_name_column and artist.has_server_data:
                 # set to purple if artist was updated from server
                 option.palette.setColor(QPalette.ColorRole.Text, QColor(164, 97, 240))
 
@@ -188,6 +196,15 @@ class TrackModel(QAbstractItemModel):
     def __init__(self, track_manager):
         super().__init__()
         self.track_manager = track_manager
+
+    def remove_track(self, track):
+        """Removes a track from the trackmodel image and the track manager"""
+        # I never made removing individual rows work without crashing the application
+        # so this is the next best thing
+        self.beginResetModel()
+        self.track_manager.remove_track(track)
+        self.create_unique_artist_index()
+        self.endResetModel()
 
     def create_unique_artist_index(self):
         """
@@ -355,7 +372,7 @@ class TrackModel(QAbstractItemModel):
 
         item = index.internalPointer()
 
-        if isinstance(item, dict):  # It's a track-artist mapping
+        if isinstance(item, dict) and "track" in item:  # It's a track-artist mapping
             track = item["track"]
             row = self.track_manager.tracks.index(track)
             return self.createIndex(row, 0, track)
@@ -449,6 +466,8 @@ class MainWindow(QMainWindow):
         self.app.setStyle("Fusion")
         self.apply_styles()
 
+        self.setAcceptDrops(True)
+
     def add_actions_layout(self):
         # Bottom layout for checkboxes and buttons
         bottom_layout = QHBoxLayout()
@@ -496,9 +515,9 @@ class MainWindow(QMainWindow):
         self.btn_save.clicked.connect(self.save_changes)
         buttons_layout.addWidget(self.btn_save)
 
-        self.btn_load_files = QPushButton("Select Folder", self)
+        self.btn_load_files = QPushButton("Load Files", self)
         self.btn_load_files.setFixedSize(120, 30)
-        self.btn_load_files.clicked.connect(self.load_directory)
+        self.btn_load_files.clicked.connect(self.load_files_dialog)
         buttons_layout.addWidget(self.btn_load_files)
 
         return buttons_layout
@@ -515,7 +534,7 @@ class MainWindow(QMainWindow):
     def run_async_tasks(self):
         """Runs pending asyncio tasks."""
         if not self.is_closing:
-            self.loop.stop()
+            self.loop.call_soon_threadsafe(self.loop.stop)
             self.loop.run_forever()
 
     async def check_server_health(self):
@@ -559,47 +578,52 @@ class MainWindow(QMainWindow):
 
         asyncio.ensure_future(run(), loop=self.loop)
 
-    def load_directory(self) -> None:
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "Select Directory",
-            "C:/Users/email_000/Desktop/music/sample/spiceandwolf",
+    def load_files(self, files: list[str]) -> None:
+        async def load_and_update():
+            await self.check_server_health()
+            # the proper implementation would use beginInsertRows in the track model,
+            # but that crashes randomly and I can't figure out why,
+            # so just resetting the view is easier and has only very minor side effects
+            self.track_model.beginResetModel()
+
+            try:
+                await self.track_manager.load_files(files)
+            except Exception as e:
+                self.show_toast(
+                    f"An error occurred when reading files: {str(e)}",
+                    ToastType.ERROR,
+                )
+            try:
+                await self.track_manager.update_artists_info_from_db()
+            except Exception as e:
+                self.show_toast(
+                    f"An error occurred querying the server for information: {str(e)}",
+                    ToastType.ERROR,
+                )
+
+            if self.cb_replace_original_title.isChecked():
+                self.track_manager.replace_original_title(
+                    overwrite=self.cb_overwrite_existing_original_title.isChecked()
+                )
+
+            if self.cb_replace_original_artist.isChecked():
+                self.track_manager.replace_original_artist(
+                    overwrite=self.cb_overwrite_existing_original_artist.isChecked()
+                )
+
+            self.track_model.create_unique_artist_index()
+            self.track_model.endResetModel()
+            self.track_view.expandAll()
+
+        asyncio.ensure_future(load_and_update(), loop=self.loop)
+
+    def load_files_dialog(self) -> None:
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Select Files", "", "MP3 Files (*.mp3)"
         )
-        if directory:
-
-            async def load_and_update():
-                self.clear_data()
-                await self.check_server_health()
-
-                try:
-                    await self.track_manager.load_directory(directory)
-                except Exception as e:
-                    self.show_toast(
-                        f"An error occurred when reading directory {directory}: {str(e)}",
-                        ToastType.ERROR,
-                    )
-                try:
-                    await self.track_manager.update_artists_info_from_db()
-                except Exception as e:
-                    self.show_toast(
-                        f"An error occurred querying the server for information: {str(e)}",
-                        ToastType.ERROR,
-                    )
-
-                if self.cb_replace_original_title.isChecked():
-                    self.track_manager.replace_original_title(
-                        overwrite=self.cb_overwrite_existing_original_title.isChecked()
-                    )
-
-                if self.cb_replace_original_artist.isChecked():
-                    self.track_manager.replace_original_artist(
-                        overwrite=self.cb_overwrite_existing_original_artist.isChecked()
-                    )
-
-                self.track_model.create_unique_artist_index()
-                self.track_view.expandAll()
-
-            asyncio.ensure_future(load_and_update(), loop=self.loop)
+        if files:
+            self.clear_data()
+            self.load_files(files)
 
     def clear_data(self) -> TrackModel:
         self.track_manager = TrackManager(host=self.api_host, port=self.api_port)
@@ -626,8 +650,8 @@ class MainWindow(QMainWindow):
                 if selected_index.isValid():
                     track_item = selected_index.internalPointer()
                     if isinstance(track_item, TrackDetails):
-                        self.track_manager.remove_track(track_item)
-                        self.track_model.layoutChanged.emit()
+                        self.track_model.remove_track(track_item)
+                        self.track_view.expandAll()
 
     def moveEvent(self, event):
         if self.toast and self.toast.isVisible():
@@ -644,6 +668,26 @@ class MainWindow(QMainWindow):
         self.loop.stop()
         self.loop.close()
         self.app.quit()
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        urls = event.mimeData().urls()
+        files = []
+        for url in urls:
+            local_path = url.toLocalFile()
+            if os.path.isdir(local_path):
+                for root, _, filenames in os.walk(local_path):
+                    for filename in filenames:
+                        if filename.lower().endswith(".mp3"):
+                            files.append(os.path.join(root, filename))
+            elif os.path.isfile(local_path) and local_path.lower().endswith(".mp3"):
+                files.append(local_path)
+
+        if files:
+            self.load_files(files)
 
 
 def main():
