@@ -197,6 +197,20 @@ class TrackModel(QAbstractItemModel):
         super().__init__()
         self.track_manager = track_manager
 
+    def remove_track(self, track):
+        """Removes a track from the trackmodel image and the track manager"""
+        indices_to_remove = []
+        for index, track_info in enumerate(self.track_index):
+            if track_info["track"] == track:
+                indices_to_remove.append(index)
+        
+        # Remove the indices in reverse order to avoid indexing issues
+        for index in reversed(indices_to_remove):
+            del self.track_index[index]
+
+        self.track_manager.remove_track(track)
+        return True
+
     def create_unique_artist_index(self):
         """
         Creates a list containing all tracks and artists.
@@ -572,6 +586,7 @@ class MainWindow(QMainWindow):
     def load_files(self, files: list[str]) -> None:
         async def load_and_update():
             await self.check_server_health()
+            self.clear_data()
 
             try:
                 await self.track_manager.load_files(files)
