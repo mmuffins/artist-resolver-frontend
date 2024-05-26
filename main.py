@@ -67,7 +67,7 @@ class ArtistDelegate(QStyledItemDelegate):
                 # set to red if the artist was not edited
                 option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 23, 62))
 
-            if column == self.custom_name_column and artist.updated_from_server:
+            if column == self.custom_name_column and artist.has_server_data:
                 # set to purple if artist was updated from server
                 option.palette.setColor(QPalette.ColorRole.Text, QColor(164, 97, 240))
 
