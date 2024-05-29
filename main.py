@@ -4,7 +4,7 @@ import sys
 import asyncio
 import httpx
 from Toast import Toast, ToastType
-from artist_resolver.trackmanager import TrackManager, TrackDetails
+from artist_resolver.trackmanager import TrackManager, TrackDetails, MbArtistDetails
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
 from PyQt6.QtGui import (
     QKeyEvent,
@@ -66,6 +66,10 @@ class ArtistDelegate(QStyledItemDelegate):
             if column == self.custom_name_column and not artist.custom_name_edited:
                 # set to red if the artist was not edited
                 option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 23, 62))
+
+            if column == self.custom_name_column and not artist.has_server_data and type(artist) is MbArtistDetails:
+                # set to blue if artist was not updated from server but has mbartist details
+                option.palette.setColor(QPalette.ColorRole.Text, QColor(0, 128, 255))
 
             if column == self.custom_name_column and artist.has_server_data:
                 # set to purple if artist was updated from server
