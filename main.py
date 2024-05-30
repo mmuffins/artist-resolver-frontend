@@ -4,7 +4,12 @@ import sys
 import asyncio
 import httpx
 from Toast import Toast, ToastType
-from artist_resolver.trackmanager import TrackManager, TrackDetails, MbArtistDetails
+from artist_resolver.trackmanager import (
+    TrackManager,
+    TrackDetails,
+    MbArtistDetails,
+    SimpleArtistDetails,
+)
 from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex, QTimer
 from PyQt6.QtGui import (
     QKeyEvent,
@@ -57,7 +62,7 @@ class ArtistDelegate(QStyledItemDelegate):
         else:
             # This is an artist item
             track = index.parent().internalPointer()
-            artist = track.mbArtistDetails[index.row()]
+            artist = track.artist_details[index.row()]
 
             if not artist.include:
                 # grey out entire line if the artist is not included
@@ -67,7 +72,11 @@ class ArtistDelegate(QStyledItemDelegate):
                 # set to red if the artist was not edited
                 option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 23, 62))
 
-            if column == self.custom_name_column and not artist.has_server_data and type(artist) is MbArtistDetails:
+            if (
+                column == self.custom_name_column
+                and not artist.has_server_data
+                and type(artist) is MbArtistDetails
+            ):
                 # set to blue if artist was not updated from server but has mbartist details
                 option.palette.setColor(QPalette.ColorRole.Text, QColor(0, 128, 255))
 
@@ -201,15 +210,6 @@ class TrackModel(QAbstractItemModel):
         super().__init__()
         self.track_manager = track_manager
 
-    def remove_track(self, track):
-        """Removes a track from the trackmodel image and the track manager"""
-        # I never made removing individual rows work without crashing the application
-        # so this is the next best thing
-        self.beginResetModel()
-        self.track_manager.remove_track(track)
-        self.create_unique_artist_index()
-        self.endResetModel()
-
     def create_unique_artist_index(self):
         """
         Creates a list containing all tracks and artists.
@@ -218,7 +218,7 @@ class TrackModel(QAbstractItemModel):
 
         self.track_index = []
         for track in self.track_manager.tracks:
-            for artist in track.mbArtistDetails:
+            for artist in track.artist_details:
                 self.track_index.append({"track": track, "artist": artist})
 
     def get_unique_artist(self, track, artist):
@@ -228,6 +228,99 @@ class TrackModel(QAbstractItemModel):
                 return index, track_info
         return None, None
 
+    def remove_track(self, track):
+        """Removes a track from the trackmodel image and the track manager"""
+        # I never made removing individual rows work without crashing the application
+        # so this is the next best thing
+        self.beginResetModel()
+        self.track_manager.remove_track(track)
+        self.create_unique_artist_index()
+        self.endResetModel()
+
+    async def load_files(
+        self,
+        files: list[str],
+        replace_original_title: bool,
+        overwrite_original_title: bool,
+        replace_original_artist: bool,
+        overwrite_original_artist: bool,
+        read_artist_json: bool,
+    ):
+        """Loads files and reads their metadata"""
+        # a proper implementation would use beginInsertRows in the track model,
+        # but that crashes randomly and I can't figure out why,
+        # so just resetting the view is easier and has only very minor side effects
+
+        self.beginResetModel()
+
+        try:
+            await self.track_manager.load_files(files, read_artist_json)
+        except Exception as e:
+            raise Exception(f"An error occurred when reading files: {str(e)}")
+
+        try:
+            await self.track_manager.update_artists_info_from_db()
+        except Exception as e:
+            raise Exception(
+                f"An error occurred querying the server for information: {str(e)}"
+            )
+
+        if replace_original_title:
+            self.track_manager.replace_original_title(
+                overwrite=overwrite_original_title
+            )
+
+        if replace_original_artist:
+            self.track_manager.replace_original_artist(
+                overwrite=overwrite_original_artist
+            )
+
+        self.create_unique_artist_index()
+        self.endResetModel()
+
+    async def save_files(self):
+        """Saves changes to loaded files"""
+        try:
+            await self.track_manager.send_changes_to_db()
+        except Exception as e:
+            raise Exception(
+                f"An error occurred when sending update data to the server: {str(e)}"
+            )
+
+        try:
+            await self.track_manager.save_files()
+        except Exception as e:
+            raise Exception(f"An error occurred when updating the files: {str(e)}")
+
+    async def convert_track_to_simple_artist(
+        self,
+        track,
+        replace_original_title: bool,
+        overwrite_original_title: bool,
+        replace_original_artist: bool,
+        overwrite_original_artist: bool,
+    ):
+        """Re-imports track, ensuring that all artist_detail objects are simple artists"""
+
+        # only run if the track either has no artist details or artist details are simple artists
+        if not track.artist_details or (
+            track.artist_details
+            and isinstance(track.artist_details[0], SimpleArtistDetails)
+        ):
+            return
+
+        file_path = track.file_path
+
+        self.remove_track(track)
+        await self.load_files(
+            [file_path],
+            replace_original_title,
+            overwrite_original_title,
+            replace_original_artist,
+            overwrite_original_artist,
+            False,
+        )
+
     def rowCount(self, parent=QModelIndex()):
         """Returns the number of rows"""
         if not parent.isValid():
@@ -235,7 +328,7 @@ class TrackModel(QAbstractItemModel):
         else:
             track = parent.internalPointer()
             if isinstance(track, TrackDetails):
-                return len(track.mbArtistDetails)
+                return len(track.artist_details)
         return 0
 
     def columnCount(self, parent=QModelIndex()):
@@ -290,7 +383,7 @@ class TrackModel(QAbstractItemModel):
 
     def data_artist(self, index, role=Qt.ItemDataRole.DisplayRole):
         track = index.parent().internalPointer()
-        artist = track.mbArtistDetails[index.row()]
+        artist = track.artist_details[index.row()]
         column_mapping = self.artist_column_mappings[index.column()]
 
         if role not in column_mapping.get("roles", []):
@@ -337,7 +430,7 @@ class TrackModel(QAbstractItemModel):
 
     def setData_artist(self, index, value, role=Qt.ItemDataRole.EditRole) -> bool:
         track = index.parent().internalPointer()
-        artist = track.mbArtistDetails[index.row()]
+        artist = track.artist_details[index.row()]
         column_mapping = self.artist_column_mappings[index.column()]
 
         if role not in column_mapping.get("roles", []):
@@ -361,10 +454,8 @@ class TrackModel(QAbstractItemModel):
             return QModelIndex()
         else:
             track = parent.internalPointer()
-            if row < len(track.mbArtistDetails):
-                _, track_info = self.get_unique_artist(
-                    track, track.mbArtistDetails[row]
-                )
+            if row < len(track.artist_details):
+                _, track_info = self.get_unique_artist(track, track.artist_details[row])
                 if track_info:
                     return self.createIndex(row, column, track_info)
         return QModelIndex()
@@ -514,6 +605,13 @@ class MainWindow(QMainWindow):
             0, 10, 0, 0
         )  # Add top margin to move buttons up
 
+        self.btn_convert_to_simple_artist = QPushButton("Convert", self)
+        self.btn_convert_to_simple_artist.setFixedSize(90, 30)
+        self.btn_convert_to_simple_artist.clicked.connect(
+            self.convert_track_to_simple_artist
+        )
+        buttons_layout.addWidget(self.btn_convert_to_simple_artist)
+
         self.btn_save = QPushButton("Save", self)
         self.btn_save.setFixedSize(90, 30)
         self.btn_save.clicked.connect(self.save_changes)
@@ -561,62 +659,54 @@ class MainWindow(QMainWindow):
                 ToastType.ERROR,
             )
 
+    def convert_track_to_simple_artist(self) -> None:
+        async def run(track_item):
+            try:
+                await self.track_model.convert_track_to_simple_artist(
+                    track_item,
+                    self.cb_replace_original_title.isChecked(),
+                    self.cb_overwrite_existing_original_title.isChecked(),
+                    self.cb_replace_original_artist.isChecked(),
+                    self.cb_overwrite_existing_original_artist.isChecked(),
+                )
+                self.track_view.expandAll()
+            except Exception as e:
+                self.show_toast(f"{str(e)}", ToastType.ERROR)
+
+        selected_indexes = self.track_view.selectedIndexes()
+        if selected_indexes:
+            selected_index = selected_indexes[0]
+            if selected_index.isValid():
+                track_item = selected_index.internalPointer()
+                if isinstance(track_item, TrackDetails):
+                    asyncio.ensure_future(run(track_item), loop=self.loop)
+
     def save_changes(self) -> None:
         async def run():
             try:
-                await self.track_manager.send_changes_to_db()
+                await self.track_model.save_files()
+                self.show_toast(f"Successfully updated all files!", ToastType.SUCCESS)
             except Exception as e:
-                self.show_toast(
-                    f"An error occurred when sending update data to the server: {str(e)}",
-                    ToastType.ERROR,
-                )
-
-            try:
-                await self.track_manager.save_files()
-                self.show_toast("Metadata saved successfully!", ToastType.SUCCESS)
-            except Exception as e:
-                self.show_toast(
-                    f"An error occurred when updating the files: {str(e)}",
-                    ToastType.ERROR,
-                )
+                self.show_toast(f"{str(e)}", ToastType.ERROR)
 
         asyncio.ensure_future(run(), loop=self.loop)
 
     def load_files(self, files: list[str]) -> None:
         async def load_and_update():
             await self.check_server_health()
-            # the proper implementation would use beginInsertRows in the track model,
-            # but that crashes randomly and I can't figure out why,
-            # so just resetting the view is easier and has only very minor side effects
-            self.track_model.beginResetModel()
 
             try:
-                await self.track_manager.load_files(files)
+                await self.track_model.load_files(
+                    files,
+                    self.cb_replace_original_title.isChecked(),
+                    self.cb_overwrite_existing_original_title.isChecked(),
+                    self.cb_replace_original_artist.isChecked(),
+                    self.cb_overwrite_existing_original_artist.isChecked(),
+                    True,
+                )
             except Exception as e:
-                self.show_toast(
-                    f"An error occurred when reading files: {str(e)}",
-                    ToastType.ERROR,
-                )
-            try:
-                await self.track_manager.update_artists_info_from_db()
-            except Exception as e:
-                self.show_toast(
-                    f"An error occurred querying the server for information: {str(e)}",
-                    ToastType.ERROR,
-                )
+                self.show_toast(f"{str(e)}", ToastType.ERROR)
 
-            if self.cb_replace_original_title.isChecked():
-                self.track_manager.replace_original_title(
-                    overwrite=self.cb_overwrite_existing_original_title.isChecked()
-                )
-
-            if self.cb_replace_original_artist.isChecked():
-                self.track_manager.replace_original_artist(
-                    overwrite=self.cb_overwrite_existing_original_artist.isChecked()
-                )
-
-            self.track_model.create_unique_artist_index()
-            self.track_model.endResetModel()
             self.track_view.expandAll()
 
         asyncio.ensure_future(load_and_update(), loop=self.loop)
