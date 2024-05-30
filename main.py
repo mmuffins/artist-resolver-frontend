@@ -242,6 +242,7 @@ class TrackModel(QAbstractItemModel):
     def __init__(self, track_manager):
         super().__init__()
         self.track_manager = track_manager
+        self.track_index = []
 
     def create_unique_artist_index(self):
         """
