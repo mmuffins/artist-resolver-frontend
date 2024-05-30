@@ -605,17 +605,17 @@ class MainWindow(QMainWindow):
             0, 10, 0, 0
         )  # Add top margin to move buttons up
 
+        self.btn_save = QPushButton("Save", self)
+        self.btn_save.setFixedSize(90, 30)
+        self.btn_save.clicked.connect(self.save_changes)
+        buttons_layout.addWidget(self.btn_save)
+
         self.btn_convert_to_simple_artist = QPushButton("Convert", self)
         self.btn_convert_to_simple_artist.setFixedSize(90, 30)
         self.btn_convert_to_simple_artist.clicked.connect(
             self.convert_track_to_simple_artist
         )
         buttons_layout.addWidget(self.btn_convert_to_simple_artist)
-
-        self.btn_save = QPushButton("Save", self)
-        self.btn_save.setFixedSize(90, 30)
-        self.btn_save.clicked.connect(self.save_changes)
-        buttons_layout.addWidget(self.btn_save)
 
         self.btn_load_files = QPushButton("Load Files", self)
         self.btn_load_files.setFixedSize(120, 30)
