@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
 class ToastType(Enum):
     ERROR = "error"
     WARNING = "warning"
-    INFORMATION = "information"
+    INFO = "information"
     SUCCESS = "success"
 
 
@@ -24,7 +24,7 @@ class Toast(QWidget):
     stylesheet = "./styles.qss"
 
     def __init__(
-        self, message, toast_type=ToastType.INFORMATION, duration=3000, parent=None
+        self, message, toast_type=ToastType.INFO, duration=3000, parent=None
     ):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.ToolTip)
@@ -93,7 +93,7 @@ class Toast(QWidget):
                 self.label.setProperty("class", f"{base_class} toast-error")
             case ToastType.WARNING:
                 self.label.setProperty("class", f"{base_class} toast-warning")
-            case ToastType.INFORMATION:
+            case ToastType.INFO:
                 self.label.setProperty("class", f"{base_class} toast-information")
             case ToastType.SUCCESS:
                 self.label.setProperty("class", f"{base_class} toast-success")
