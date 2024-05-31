@@ -342,6 +342,22 @@ class TrackModel(QAbstractItemModel):
         except Exception as e:
             raise Exception(f"An error occurred when updating the files: {str(e)}")
 
+    def get_musicbrainz_url(self, item):
+        base_url = "https://musicbrainz.org"
+        if isinstance(item, TrackDetails):
+            return (
+                f"{base_url}/track/{item.mb_track_id}" if item.mb_track_id else None
+            )
+
+        if (
+            isinstance(item, dict)
+            and item["artist"]
+            and isinstance(item["artist"], MbArtistDetails)
+        ):
+            return f"{base_url}/artist/{item["artist"].mbid}" if item["artist"].mbid else None
+
+        return None
+
     async def convert_track_to_simple_artist(
         self,
         track,
@@ -655,10 +671,10 @@ class MainWindow(QMainWindow):
             0, 10, 0, 0
         )  # Add top margin to move buttons up
 
-        self.btn_save = QPushButton("Save", self)
-        self.btn_save.setFixedSize(90, 30)
-        self.btn_save.clicked.connect(self.save_changes)
-        buttons_layout.addWidget(self.btn_save)
+        self.btn_open_in_musicbrainz = QPushButton("MusicBrains", self)
+        self.btn_open_in_musicbrainz.setFixedSize(90, 30)
+        self.btn_open_in_musicbrainz.clicked.connect(self.open_in_musicbrainz)
+        buttons_layout.addWidget(self.btn_open_in_musicbrainz)
 
         self.btn_convert_to_simple_artist = QPushButton("Convert", self)
         self.btn_convert_to_simple_artist.setFixedSize(90, 30)
@@ -671,6 +687,11 @@ class MainWindow(QMainWindow):
         self.btn_load_files.setFixedSize(120, 30)
         self.btn_load_files.clicked.connect(self.load_files_dialog)
         buttons_layout.addWidget(self.btn_load_files)
+
+        self.btn_save = QPushButton("Save", self)
+        self.btn_save.setFixedSize(90, 30)
+        self.btn_save.clicked.connect(self.save_changes)
+        buttons_layout.addWidget(self.btn_save)
 
         return buttons_layout
 
@@ -707,7 +728,23 @@ class MainWindow(QMainWindow):
             self.show_toast(
                 f"An unexpected error occurred when trying to contact the server: {str(e)}",
                 ToastType.ERROR,
-            )
+
+    def open_in_musicbrainz(self) -> None:
+        selected_indexes = self.track_view.selectedIndexes()
+        if selected_indexes:
+            selected_index = selected_indexes[0]
+            if selected_index.isValid():
+                item = selected_index.internalPointer()
+                try:
+                    url = self.track_model.get_musicbrainz_url(item)
+                    if url:
+                        webbrowser.open(url)
+                    else:
+                        self.show_toast(
+                            "No URL available for this track.", ToastType.INFO
+                        )
+                except Exception as e:
+                    self.show_toast(f"{str(e)}", ToastType.ERROR, 10000)
 
     def convert_track_to_simple_artist(self) -> None:
         async def run(track_item):
