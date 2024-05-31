@@ -3,6 +3,7 @@ import argparse
 import sys
 import asyncio
 import httpx
+import webbrowser
 from Toast import Toast, ToastType
 from artist_resolver.trackmanager import (
     TrackManager,
@@ -73,6 +74,13 @@ class ArtistDelegate(QStyledItemDelegate):
             return True
         return False
 
+    def apply_invalid_relation_true_condition(self, artist, option):
+        if artist.invalid_relation:
+            # set to ?? if the artist is likely to be an incorrect relation
+            option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 0, 0))
+            return True
+        return False
+
     def apply_include_condition(self, artist, option, color_modified):
         if not artist.include:
             if color_modified:
@@ -136,7 +144,7 @@ class CustomTreeView(QTreeView):
                 cell_value = index.data(Qt.ItemDataRole.DisplayRole)
                 clipboard = QApplication.clipboard()
                 clipboard.setText(cell_value)
-                self.main_window.show_toast(f"Copied {cell_value}", ToastType.INFO)
+                self.main_window.show_toast(f"Copied {cell_value}", ToastType.INFO, 500)
         super().mousePressEvent(event)
 
 
@@ -593,10 +601,7 @@ class MainWindow(QMainWindow):
             with open(self.stylesheet, "r") as file:
                 self.setStyleSheet(file.read())
         except Exception as e:
-            self.show_toast(
-                f"Error loading stylesheet: {e}",
-                ToastType.ERROR,
-            )
+            self.show_toast(f"Error loading stylesheet: {e}", ToastType.ERROR, 10000)
 
     def initUI(self) -> None:
         self.toast = None
@@ -700,7 +705,9 @@ class MainWindow(QMainWindow):
             return TrackManager(self.api_host, self.api_port)
         except Exception as e:
             self.show_toast(
-                f"Failed to create a TrackManager object: {str(e)}", ToastType.ERROR
+                f"Failed to create a TrackManager object: {str(e)}",
+                ToastType.ERROR,
+                10000,
             )
             return None
 
@@ -718,16 +725,20 @@ class MainWindow(QMainWindow):
                 self.show_toast(
                     f"The server is not healthy. Please check the server status.",
                     ToastType.ERROR,
+                    10000,
                 )
         except httpx.RequestError as e:
             self.show_toast(
                 f"Could not reach the server at {self.api_host}:{self.api_port}: {str(e)}",
                 ToastType.ERROR,
+                10000,
             )
         except Exception as e:
             self.show_toast(
                 f"An unexpected error occurred when trying to contact the server: {str(e)}",
                 ToastType.ERROR,
+                10000,
+            )
 
     def open_in_musicbrainz(self) -> None:
         selected_indexes = self.track_view.selectedIndexes()
@@ -758,7 +769,7 @@ class MainWindow(QMainWindow):
                 )
                 self.track_view.expandAll()
             except Exception as e:
-                self.show_toast(f"{str(e)}", ToastType.ERROR)
+                self.show_toast(f"{str(e)}", ToastType.ERROR, 10000)
 
         selected_indexes = self.track_view.selectedIndexes()
         if selected_indexes:
@@ -772,9 +783,11 @@ class MainWindow(QMainWindow):
         async def run():
             try:
                 await self.track_model.save_files()
-                self.show_toast(f"Successfully updated all files!", ToastType.SUCCESS)
+                self.show_toast(
+                    f"Successfully updated all files!", ToastType.SUCCESS, 500
+                )
             except Exception as e:
-                self.show_toast(f"{str(e)}", ToastType.ERROR)
+                self.show_toast(f"{str(e)}", ToastType.ERROR, 10000)
 
         asyncio.ensure_future(run(), loop=self.loop)
 
@@ -792,7 +805,7 @@ class MainWindow(QMainWindow):
                     True,
                 )
             except Exception as e:
-                self.show_toast(f"{str(e)}", ToastType.ERROR)
+                self.show_toast(f"{str(e)}", ToastType.ERROR, 10000)
 
             self.track_view.expandAll()
 
@@ -811,11 +824,15 @@ class MainWindow(QMainWindow):
         self.track_model = TrackModel(self.track_manager)
         self.track_view.setModel(self.track_model)
 
-    def show_toast(self, message: str, toast_type: ToastType) -> None:
+    def show_toast(
+        self, message: str, toast_type: ToastType, duration: int = 3000
+    ) -> None:
         if self.toast and self.toast.isVisible():
             self.toast.hide()
 
-        self.toast = Toast(message, toast_type=toast_type, parent=self)
+        self.toast = Toast(
+            message, toast_type=toast_type, duration=duration, parent=self
+        )
         self.toast.update_position(self.geometry())
         self.toast.show()
 
