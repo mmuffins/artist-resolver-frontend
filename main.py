@@ -49,22 +49,35 @@ class ArtistDelegate(QStyledItemDelegate):
                 return i
         return -1
 
-    def apply_custom_name_edited_condition(self, artist, option):
-        if not artist.custom_name_edited:
+    def apply_simple_artist_condition(self, artist, option):
+        if not isinstance(artist, SimpleArtistDetails):
+            return False
+
+        if artist.has_server_data:
+            # set to purple if artist was updated from server
+            option.palette.setColor(QPalette.ColorRole.Text, QColor(164, 97, 240))
+            return True
+        else:
             # set to red if the artist was not edited
             option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 23, 62))
             return True
         return False
 
-    def apply_server_data_condition(self, artist, option):
-        if not artist.has_server_data and isinstance(artist, MbArtistDetails):
-            # set to blue if artist was not updated from server but has mbartist details
-            option.palette.setColor(QPalette.ColorRole.Text, QColor(0, 128, 255))
-            return True
-        elif artist.has_server_data:
+    def apply_mbartist_condition(self, artist, option):
+        if not isinstance(artist, MbArtistDetails) or isinstance(
+            artist, SimpleArtistDetails
+        ):
+            return False
+
+        if artist.has_server_data:
             # set to purple if artist was updated from server
             option.palette.setColor(QPalette.ColorRole.Text, QColor(164, 97, 240))
             return True
+        else:
+            # set to blue if artist was not updated from server but has mbartist details
+            option.palette.setColor(QPalette.ColorRole.Text, QColor(0, 128, 255))
+            return True
+
         return False
 
     def apply_custom_name_edited_true_condition(self, artist, option):
@@ -118,11 +131,13 @@ class ArtistDelegate(QStyledItemDelegate):
 
             # Apply conditions
             if column == self.custom_name_column:
-                color_modified |= self.apply_custom_name_edited_condition(
+
+                color_modified |= self.apply_simple_artist_condition(artist, option)
+                color_modified |= self.apply_mbartist_condition(artist, option)
+                color_modified |= self.apply_custom_name_edited_true_condition(
                     artist, option
                 )
-                color_modified |= self.apply_server_data_condition(artist, option)
-                color_modified |= self.apply_custom_name_edited_true_condition(
+                color_modified |= self.apply_invalid_relation_true_condition(
                     artist, option
                 )
 
