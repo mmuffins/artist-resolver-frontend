@@ -367,17 +367,18 @@ class TrackModel(QAbstractItemModel):
 
     def get_musicbrainz_url(self, item):
         base_url = "https://musicbrainz.org"
-        if isinstance(item, TrackDetails):
-            return (
-                f"{base_url}/track/{item.mb_track_id}" if item.mb_track_id else None
-            )
+        if isinstance(item, TrackDetails) and item.mb_track_id:
+            return f"{base_url}/track/{item.mb_track_id}"
 
         if (
             isinstance(item, dict)
-            and item["artist"]
             and isinstance(item["artist"], MbArtistDetails)
+            and not isinstance(item["artist"], SimpleArtistDetails)
+            and item["artist"]
+            and item["artist"].mbid
         ):
-            return f"{base_url}/artist/{item["artist"].mbid}" if item["artist"].mbid else None
+            mbid = item["artist"].mbid
+            return f"{base_url}/artist/{mbid}"
 
         return None
 
@@ -770,7 +771,7 @@ class MainWindow(QMainWindow):
                             "No URL available for this track.", ToastType.INFO
                         )
                 except Exception as e:
-                    self.show_toast(f"{str(e)}", ToastType.ERROR, 10000)
+                    self.show_toast(f"{str(e)}", ToastType.ERROR, 1000)
 
     def convert_track_to_simple_artist(self) -> None:
         async def run(track_item):
