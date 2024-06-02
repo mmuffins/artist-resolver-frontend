@@ -66,8 +66,8 @@ class ArtistDelegate(QStyledItemDelegate):
 
     def apply_invalid_relation_true_condition(self, artist, option):
         if artist.invalid_relation:
-            # set to ?? if the artist is likely to be an incorrect relation
-            option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 0, 0))
+            # set to orange if the artist is likely to be an incorrect relation
+            option.palette.setColor(QPalette.ColorRole.Text, QColor(255, 128, 0))
             return True
         return False
 
