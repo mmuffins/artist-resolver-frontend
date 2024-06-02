@@ -158,6 +158,11 @@ class MainWindow(QMainWindow):
         )
         buttons_layout.addWidget(self.btn_convert_to_simple_artist)
 
+        self.btn_clear_data = QPushButton("Clear", self)
+        self.btn_clear_data.setFixedSize(90, 30)
+        self.btn_clear_data.clicked.connect(self.clear_data)
+        buttons_layout.addWidget(self.btn_clear_data)
+
         self.btn_load_files = QPushButton("Load Files", self)
         self.btn_load_files.setFixedSize(120, 30)
         self.btn_load_files.clicked.connect(self.load_files_dialog)
