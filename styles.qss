@@ -2,7 +2,7 @@
     font-size: 16px;
     color: rgb(220, 220, 220);
     font-family: "Noto sans JP";
-    font-weight: 900;
+    font-weight: 400;
 }
 
 QPushButton {
@@ -85,9 +85,6 @@ QMainWindow {
 }
 
 
-
-
-
 .toast {
     color: white;
     padding: 20px;
@@ -108,7 +105,7 @@ QMainWindow {
 }
 
 .toast-information {
-    background-color: blue;
+    background-color: rgb(38, 79, 120);
 }
 
 .toast-success {
