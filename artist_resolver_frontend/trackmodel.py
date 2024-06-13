@@ -80,10 +80,12 @@ class TrackModel(QAbstractItemModel):
             "property": "type",
             "roles": [
                 Qt.ItemDataRole.DisplayRole,
+                Qt.ItemDataRole.EditRole,
             ],
             "flags": [
                 Qt.ItemFlag.ItemIsEnabled,
                 Qt.ItemFlag.ItemIsSelectable,
+                Qt.ItemFlag.ItemIsEditable,
             ],
         },
         {
@@ -225,6 +227,18 @@ class TrackModel(QAbstractItemModel):
 
         return None
 
+    def get_artist_column(self, column_name):
+        for i, column in enumerate(self.artist_column_mappings):
+            if column["property"] == column_name:
+                return i
+        return -1
+
+    def get_track_column(self, column_name):
+        for i, column in enumerate(self.track_column_mappings):
+            if column["property"] == column_name:
+                return i
+        return -1
+
     async def convert_track_to_simple_artist(
         self,
         track,
@@ -322,6 +336,9 @@ class TrackModel(QAbstractItemModel):
         if role not in column_mapping.get("roles", []):
             return None
 
+        if column_mapping["property"] == "type" and role == Qt.ItemDataRole.EditRole:
+            return artist.type
+
         value = getattr(artist, column_mapping["property"], None)
 
         if role == Qt.ItemDataRole.CheckStateRole:
@@ -371,6 +388,12 @@ class TrackModel(QAbstractItemModel):
 
         if role == Qt.ItemDataRole.CheckStateRole:
             value = value == Qt.CheckState.Checked.value
+
+        if column_mapping["property"] == "type":
+            if value in ["Person", "Character", "Group"]:
+                setattr(artist, column_mapping["property"], value)
+                self.layoutChanged.emit()
+                return True
 
         setattr(artist, column_mapping["property"], value)
 

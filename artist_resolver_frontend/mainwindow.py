@@ -26,6 +26,7 @@ from artist_resolver.trackmanager import (
 from artist_resolver_frontend import (
     HttpServer,
     ArtistDelegate,
+    ComboBoxDelegate,
     CustomTreeView,
     TrackModel,
     Toast,
@@ -89,6 +90,9 @@ class MainWindow(QMainWindow):
         self.track_model = TrackModel(self.track_manager)
         self.track_view.setModel(self.track_model)
         self.track_view.setItemDelegate(ArtistDelegate(self, self.track_model))
+        self.track_view.setItemDelegateForColumn(
+            1, ComboBoxDelegate(self.track_view, self.track_model)
+        )
 
         self.layout.addWidget(self.track_view)
 

@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QModelIndex
+from PyQt6.QtCore import Qt, QModelIndex
 from PyQt6.QtGui import (
     QPalette,
     QColor,
@@ -7,6 +7,7 @@ from PyQt6.QtGui import (
 from PyQt6.QtWidgets import (
     QStyledItemDelegate,
     QStyleOptionViewItem,
+    QComboBox,
 )
 from artist_resolver.trackmanager import (
     MbArtistDetails,
@@ -18,13 +19,7 @@ class ArtistDelegate(QStyledItemDelegate):
     def __init__(self, parent=None, model=None):
         super().__init__(parent)
         self.model = model
-        self.custom_name_column = self.get_custom_name_column()
-
-    def get_custom_name_column(self):
-        for i, column in enumerate(self.model.artist_column_mappings):
-            if column["property"] == "custom_name":
-                return i
-        return -1
+        self.custom_name_column = self.model.get_artist_column("custom_name")
 
     def apply_simple_artist_condition(self, artist, option):
         if not isinstance(artist, SimpleArtistDetails):
@@ -122,3 +117,32 @@ class ArtistDelegate(QStyledItemDelegate):
             self.apply_include_condition(artist, option, color_modified)
 
         super().paint(painter, option, index)
+
+
+class ComboBoxDelegate(QStyledItemDelegate):
+    def __init__(self, parent=None, model=None):
+        super().__init__(parent)
+        self.model = model
+        self.type_column = self.model.get_artist_column("type")
+
+    def createEditor(self, parent, option, index):
+        if index.column() == self.type_column:
+            comboBox = QComboBox(parent)
+            comboBox.addItems(["Person", "Character", "Group"])
+            return comboBox
+        return super().createEditor(parent, option, index)
+
+    def setEditorData(self, editor, index):
+        if index.column() == self.type_column:
+            value = index.model().data(index, Qt.ItemDataRole.EditRole)
+            if isinstance(value, str):
+                editor.setCurrentText(value)
+        else:
+            super().setEditorData(editor, index)
+
+    def setModelData(self, editor, model, index):
+        if index.column() == self.type_column:
+            value = editor.currentText()
+            model.setData(index, value, Qt.ItemDataRole.EditRole)
+        else:
+            super().setModelData(editor, model, index)
