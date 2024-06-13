@@ -91,7 +91,8 @@ class MainWindow(QMainWindow):
         self.track_view.setModel(self.track_model)
         self.track_view.setItemDelegate(ArtistDelegate(self, self.track_model))
         self.track_view.setItemDelegateForColumn(
-            1, ComboBoxDelegate(self.track_view, self.track_model)
+            self.track_model.get_artist_column("type"),
+            ComboBoxDelegate(self.track_view, self.track_model),
         )
 
         self.layout.addWidget(self.track_view)
