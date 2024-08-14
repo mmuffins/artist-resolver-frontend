@@ -5,7 +5,7 @@ from aiohttp import web
 
 class HttpServer:
     def __init__(
-        self, main_window, host: str, port: str, loop: asyncio.ProactorEventLoop
+        self, main_window, host: str, port: str, loop: asyncio.SelectorEventLoop
     ):
         self.main_window = main_window
         self.host = host
