@@ -1,11 +1,28 @@
 import os
 import argparse
 import sys
-from PyQt6.QtWidgets import QApplication
 from artist_resolver_frontend import MainWindow
 
 
+def configure_qt_environment():
+    import PyQt6
+
+    pyqt_root = os.path.join(os.path.dirname(PyQt6.__file__), "Qt6")
+    plugin_path = os.path.join(pyqt_root, "plugins")
+    qml_path = os.path.join(pyqt_root, "qml")
+    platform_plugin_path = os.path.join(plugin_path, "platforms")
+
+    # Prefer the wheel's bundled Qt plugins over any system-wide Qt plugin paths.
+    os.environ["QT_PLUGIN_PATH"] = plugin_path
+    os.environ["QML2_IMPORT_PATH"] = qml_path
+    os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = platform_plugin_path
+
+
 def main():
+    configure_qt_environment()
+
+    from PyQt6.QtWidgets import QApplication
+
     parser = argparse.ArgumentParser(prog="Artist Relation Resolver")
     parser.add_argument(
         "-s",
