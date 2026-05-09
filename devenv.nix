@@ -54,12 +54,13 @@
     };
   };
 
-  # Because Qt6 applications on Nix need to find their plugins and schemas.
   env = {
+    # ARTIST_RESOLVER_HOST = "myendpoint.com";
+    # ARTIST_RESOLVER_PORT = "80";
+
+    # Because Qt6 applications on Nix need to find their plugins and schemas.
     QT_PLUGIN_PATH = "${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtPluginPrefix}";
     QML2_IMPORT_PATH = "${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtQmlPrefix}";
-    # ARTIST_RESOLVER_HOST = "artist-resolver.lan";
-    # ARTIST_RESOLVER_PORT = "80";
   };
 
   enterShell = ''
