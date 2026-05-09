@@ -18,11 +18,5 @@ artist-resolver-trackmanager = { git = "https://github.com/mmuffins/artist-resol
 
 [dependency-groups]
 dev = [
-    "aiohttp~=3.13.5",
-    "artist-resolver-trackmanager",
     "flake8~=7.3.0",
-    "httpx~=0.28.1",
-    "mutagen~=1.47.0",
-    "pyqt6~=6.11.0",
-    "respx~=0.23.1",
 ]

@@ -101,13 +101,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "aiohttp" },
-    { name = "artist-resolver-trackmanager" },
     { name = "flake8" },
-    { name = "httpx" },
-    { name = "mutagen" },
-    { name = "pyqt6" },
-    { name = "respx" },
 ]
 
 [package.metadata]
@@ -121,15 +115,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "aiohttp", specifier = "~=3.13.5" },
-    { name = "artist-resolver-trackmanager", git = "https://github.com/mmuffins/artist-resolver-trackmanager.git?rev=main" },
-    { name = "flake8", specifier = "~=7.3.0" },
-    { name = "httpx", specifier = "~=0.28.1" },
-    { name = "mutagen", specifier = "~=1.47.0" },
-    { name = "pyqt6", specifier = "~=6.11.0" },
-    { name = "respx", specifier = "~=0.23.1" },
-]
+dev = [{ name = "flake8", specifier = "~=7.3.0" }]
 
 [[package]]
 name = "artist-resolver-trackmanager"

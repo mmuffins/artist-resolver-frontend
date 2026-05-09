@@ -11,67 +11,36 @@
   env.LD_LIBRARY_PATH = lib.makeLibraryPath (
     with pkgs;
     [
-      libGL
-      libglvnd
+      zstd
       glib
-      dbus
-      fontconfig
-      freetype
+      zlib
+      libGL
       libxkbcommon
+      fontconfig
+      libglvnd
+      dbus
+      freetype
       wayland
       stdenv.cc.cc.lib
-      zlib
-      zstd
       xorg.libX11
-      xorg.libXcursor
-      xorg.libXi
-      xorg.libXext
-      xorg.libXfixes
-      xorg.libXrandr
-      xorg.libXrender
-      xorg.libxcb
-      xorg.libxkbfile
-      xorg.libSM
-      xorg.libICE
-      xorg.xcbutil
-      xorg.xcbutilcursor
-      xorg.xcbutilimage
-      xorg.xcbutilkeysyms
-      xorg.xcbutilrenderutil
-      xorg.xcbutilwm
     ]
   );
 
   packages = with pkgs; [
-    git
-    libGL
-    libglvnd
+    python3Packages.pyqt6
+    qt6.qtbase
+    zstd
     glib
-    dbus
-    fontconfig
-    freetype
+    zlib
+    libGL
     libxkbcommon
+    fontconfig
+    libglvnd
+    dbus
+    freetype
     wayland
     stdenv.cc.cc.lib
-    zlib
-    zstd
     xorg.libX11
-    xorg.libXcursor
-    xorg.libXi
-    xorg.libXext
-    xorg.libXfixes
-    xorg.libXrandr
-    xorg.libXrender
-    xorg.libxcb
-    xorg.libxkbfile
-    xorg.libSM
-    xorg.libICE
-    xorg.xcbutil
-    xorg.xcbutilcursor
-    xorg.xcbutilimage
-    xorg.xcbutilkeysyms
-    xorg.xcbutilrenderutil
-    xorg.xcbutilwm
   ];
   cachix.pull = [ "nix-linter" ];
 
@@ -83,6 +52,14 @@
       enable = true;
       sync.enable = true;
     };
+  };
+
+  # Because Qt6 applications on Nix need to find their plugins and schemas.
+  env = {
+    QT_PLUGIN_PATH = "${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtPluginPrefix}";
+    QML2_IMPORT_PATH = "${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtQmlPrefix}";
+    # ARTIST_RESOLVER_HOST = "artist-resolver.lan";
+    # ARTIST_RESOLVER_PORT = "80";
   };
 
   enterShell = ''
