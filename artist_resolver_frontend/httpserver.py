@@ -24,7 +24,9 @@ class HttpServer:
         try:
             data = await request.json()
             files = [
-                os.path.normpath(file["path"]) for file in data["files"] if os.path.exists(os.path.normpath(file["path"]))
+                os.path.normpath(file["path"])
+                for file in data["files"]
+                if os.path.exists(os.path.normpath(file["path"]))
             ]
             if files:
                 self.main_window.load_files(files)
