@@ -1,6 +1,12 @@
 # Artist Relation Resolver Frontend
 A gui application for the artist relation resolver api
 
+## Formatting
+Run format and lint checks with Ruff:
+```bash
+$ uv run ruff check .
+```
+
 ## Updating dependencies
 - Manually update the python version in `devenv.nix`
 - Manually update the python version in `pyproject.toml`
@@ -62,4 +68,3 @@ Start in:
 `<Project Directory>`
 Target:
 `pwsh -noprofile -WindowStyle Hidden -command "&{$ENV:ARTIST_RESOLVER_HOST='endpoint.com';$ENV:ARTIST_RESOLVER_PORT='80';& '<Project Directory>/run.ps1'}"`
-
