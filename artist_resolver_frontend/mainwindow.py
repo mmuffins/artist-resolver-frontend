@@ -203,7 +203,7 @@ class MainWindow(QMainWindow):
 
             if not api_is_healthy:
                 self.show_toast(
-                    f"The server is not healthy. Please check the server status.",
+                    "The server is not healthy. Please check the server status.",
                     ToastType.ERROR,
                     10000,
                 )
@@ -264,7 +264,7 @@ class MainWindow(QMainWindow):
             try:
                 await self.track_model.save_files()
                 self.show_toast(
-                    f"Successfully updated all files!", ToastType.SUCCESS, 500
+                    "Successfully updated all files!", ToastType.SUCCESS, 500
                 )
             except Exception as e:
                 self.show_toast(f"{str(e)}", ToastType.ERROR, 10000)

@@ -7,7 +7,6 @@ from PyQt6.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 
 class TrackModel(QAbstractItemModel):
-
     header_names = [
         {"display_name": "Title", "width": 100},
         {"display_name": "Type", "width": 100},

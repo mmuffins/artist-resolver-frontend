@@ -3,9 +3,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QTreeView,
 )
-from artist_resolver_frontend import (
-    ToastType
-)
+from artist_resolver_frontend import ToastType
 
 
 class CustomTreeView(QTreeView):

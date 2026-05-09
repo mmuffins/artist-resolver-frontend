@@ -103,7 +103,6 @@ class ArtistDelegate(QStyledItemDelegate):
 
             # Apply conditions
             if column == self.custom_name_column:
-
                 color_modified |= self.apply_simple_artist_condition(artist, option)
                 color_modified |= self.apply_mbartist_condition(artist, option)
                 color_modified |= self.apply_custom_name_edited_true_condition(

@@ -1,0 +1,23 @@
+[project]
+name = "artist-resolver-frontend"
+version = "1.0.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "aiohttp~=3.13.5",
+    "artist-resolver-trackmanager",
+    "httpx~=0.28.1",
+    "mutagen~=1.47.0",
+    "pyqt6~=6.11.0",
+    "respx~=0.23.1",
+]
+
+[tool.uv.sources]
+artist-resolver-trackmanager = { git = "https://github.com/mmuffins/artist-resolver-trackmanager.git", rev = "main" }
+
+[dependency-groups]
+dev = [
+    "flake8~=7.3.0",
+    "ruff>=0.15.12",
+]

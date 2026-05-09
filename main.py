@@ -1,11 +1,13 @@
 import os
 import argparse
 import sys
-from PyQt6.QtWidgets import QApplication
 from artist_resolver_frontend import MainWindow
 
 
 def main():
+
+    from PyQt6.QtWidgets import QApplication
+
     parser = argparse.ArgumentParser(prog="Artist Relation Resolver")
     parser.add_argument(
         "-s",
