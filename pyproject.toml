@@ -19,4 +19,5 @@ artist-resolver-trackmanager = { git = "https://github.com/mmuffins/artist-resol
 [dependency-groups]
 dev = [
     "flake8~=7.3.0",
+    "ruff>=0.15.12",
 ]
