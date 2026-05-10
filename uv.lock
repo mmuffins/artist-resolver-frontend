@@ -107,7 +107,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = "~=3.13.5" },
-    { name = "artist-resolver-trackmanager", git = "https://github.com/mmuffins/artist-resolver-trackmanager.git?rev=main" },
+    { name = "artist-resolver-trackmanager", git = "https://github.com/mmuffins/artist-resolver-trackmanager.git?branch=main" },
     { name = "httpx", specifier = "~=0.28.1" },
     { name = "mutagen", specifier = "~=1.47.0" },
     { name = "pyqt6", specifier = "~=6.11.0" },
@@ -119,8 +119,8 @@ dev = [{ name = "ruff", specifier = ">=0.15.12" }]
 
 [[package]]
 name = "artist-resolver-trackmanager"
-version = "2.0.331"
-source = { git = "https://github.com/mmuffins/artist-resolver-trackmanager.git?rev=main#ca18dbc5216ee4f485c2e6b7dbefa767d0eb52e5" }
+version = "2.0.361"
+source = { git = "https://github.com/mmuffins/artist-resolver-trackmanager.git?branch=main#5f3c5eec28370e2adbef832c3c2b9963471a86d6" }
 dependencies = [
     { name = "httpx" },
     { name = "mutagen" },

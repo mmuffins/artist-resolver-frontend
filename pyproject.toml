@@ -14,9 +14,12 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-artist-resolver-trackmanager = { git = "https://github.com/mmuffins/artist-resolver-trackmanager.git", rev = "main" }
+artist-resolver-trackmanager = { git = "https://github.com/mmuffins/artist-resolver-trackmanager.git", branch = "main" }
 
 [dependency-groups]
 dev = [
     "ruff>=0.15.12",
 ]
+
+[project.urls]
+repository = "https://github.com/mmuffins/artist-resolver-frontend"
