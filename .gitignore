@@ -514,3 +514,6 @@ devenv.local.yaml
 .pre-commit-config.yaml
 
 .codex
+
+# ruff
+.ruff_cache
