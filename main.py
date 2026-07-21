@@ -1,7 +1,41 @@
 import os
 import argparse
 import sys
-from artist_resolver_frontend import MainWindow
+from pathlib import Path
+from xml.sax.saxutils import escape
+
+
+def configure_fontconfig() -> None:
+    if "FONTCONFIG_FILE" in os.environ:
+        return
+    if sys.platform != "linux" or "DEVENV_ROOT" not in os.environ:
+        return
+
+    project_root = Path(__file__).resolve().parent
+    font_dir = project_root / "font"
+    cache_dir = Path(os.getenv("XDG_CACHE_HOME", Path.home() / ".cache"))
+    config_dir = cache_dir / "artist-resolver-frontend"
+    config_dir.mkdir(parents=True, exist_ok=True)
+
+    fontconfig_file = config_dir / "fonts.conf"
+    fontconfig_file.write_text(
+        "\n".join(
+            [
+                '<?xml version="1.0"?>',
+                '<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">',
+                "<fontconfig>",
+                f"  <dir>{escape(str(font_dir))}</dir>",
+                '  <cachedir prefix="xdg">fontconfig</cachedir>',
+                "</fontconfig>",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    os.environ["FONTCONFIG_FILE"] = str(fontconfig_file)
+
+
+configure_fontconfig()
+from artist_resolver_frontend import MainWindow  # noqa: E402
 
 
 def main():
