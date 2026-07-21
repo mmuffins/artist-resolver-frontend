@@ -18,11 +18,16 @@ devenv update
 - Update outdated libraries:
 ```bash
 $ uv tree --outdated --depth 1
-$ uv add 'httpx~=0.28.0'
+$ uv add 'httpx2~=0.28.0'
 #or 
-$ uv add --dev 'httpx~=0.28.0'
+$ uv add --dev 'ruff~=0.15.22'
 ```
 uv automatically upgrades versions matching the constraint, and will do so silently, they will not be listed in the outdated packages. `uv tree --outdated` only highlights packages that need to be upgraded manually.
+
+Trackmanager needs to handled separately because it pulls from github rather than from tagged sources
+```bash
+uv lock --upgrade-package artist-resolver-trackmanager
+```
 
 ## Running
 Enable devenv (nixos only):

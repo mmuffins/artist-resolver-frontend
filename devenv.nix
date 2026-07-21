@@ -23,12 +23,17 @@
       wayland
       stdenv.cc.cc.lib
       xorg.libX11
+      xorg.libxcb
+      xorg.xcbutil
+      xorg.xcbutilcursor
+      xorg.xcbutilimage
+      xorg.xcbutilkeysyms
+      xorg.xcbutilrenderutil
+      xorg.xcbutilwm
     ]
   );
 
   packages = with pkgs; [
-    python3Packages.pyqt6
-    qt6.qtbase
     zstd
     glib
     zlib
@@ -41,6 +46,13 @@
     wayland
     stdenv.cc.cc.lib
     xorg.libX11
+    xorg.libxcb
+    xorg.xcbutil
+    xorg.xcbutilcursor
+    xorg.xcbutilimage
+    xorg.xcbutilkeysyms
+    xorg.xcbutilrenderutil
+    xorg.xcbutilwm
   ];
   cachix.pull = [ "nix-linter" ];
 
@@ -57,13 +69,11 @@
   env = {
     # ARTIST_RESOLVER_HOST = "myendpoint.com";
     # ARTIST_RESOLVER_PORT = "80";
-
-    # Because Qt6 applications on Nix need to find their plugins and schemas.
-    QT_PLUGIN_PATH = "${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtPluginPrefix}";
-    QML2_IMPORT_PATH = "${pkgs.qt6.qtbase}/${pkgs.qt6.qtbase.qtQmlPrefix}";
   };
 
   enterShell = ''
+    export QT_PLUGIN_PATH="$DEVENV_ROOT/.devenv/state/venv/lib/python3.14/site-packages/PyQt6/Qt6/plugins"
+    unset QML2_IMPORT_PATH
     git --version
     python --version
     uv --version
